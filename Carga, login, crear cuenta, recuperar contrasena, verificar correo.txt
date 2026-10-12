@@ -1,0 +1,1791 @@
+//splash_screen
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'login_screen.dart';
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.85,
+      end: 1.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _animationController.forward();
+
+    Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LoginScreen(),
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // LOGO DE M.A.M.B.O.
+                  Image.asset(
+                    'assets/images/logo_mambo.png',
+                    width: 230,
+                  ),
+
+                  const SizedBox(height: 35),
+
+                  // NOMBRE DE LA APLICACIÓN
+                  const Text(
+                    'GreenShield',
+                    style: TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF145A32),
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // DESCRIPCIÓN
+                  const Text(
+                    'Sistema de Monitoreo Ambiental',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 45),
+
+                  // INDICADOR DE CARGA
+                  const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    'Cargando...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black45,
+                    ),
+                  ),
+
+                  const SizedBox(height: 50),
+
+                  // EMPRESA DESARROLLADORA
+                  const Text(
+                    'Desarrollado por',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.black38,
+                    ),
+                  ),
+
+                  const SizedBox(height: 5),
+
+                  const Text(
+                    'M.A.M.B.O.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF145A32),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+---------------------------------------------------------------------
+//login_screen
+import 'package:flutter/material.dart';
+import '../services/greenshield_api.dart';
+
+import 'register_screen.dart';
+import 'forgot_password_screen.dart';
+import 'email_verification_screen.dart';
+import 'user_home_screen.dart';
+import 'admin_home_screen.dart'; // ⚠️ TEMPORAL: acceso admin
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _usuarioController =
+      TextEditingController();
+
+  final TextEditingController _passwordController =
+      TextEditingController();
+
+  bool _ocultarPassword = true;
+  bool _cargando = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _usuarioController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _iniciarSesion() async {
+    final correo = _usuarioController.text.trim().toLowerCase();
+    final password = _passwordController.text;
+
+    if (correo.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Por favor, completa todos los campos.');
+      return;
+    }
+    if (!correo.contains('@')) {
+      setState(() => _error = 'Ingresa un correo electrónico válido.');
+      return;
+    }
+
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+    try {
+      // Se reemplaza el ingreso simulado por la autenticación de la API.
+      await GreenShieldApi.instance.login(correo, password);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const UserHomeScreen()),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+      if (e.statusCode == 403) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Verifica tu cuenta con el código que recibiste.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  void _verificarCorreo() {
+    final correo = _usuarioController.text.trim().toLowerCase();
+    if (correo.isEmpty || !correo.contains('@')) {
+      setState(() => _error = 'Escribe tu correo antes de verificar la cuenta.');
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EmailVerificationScreen(correo: correo),
+      ),
+    );
+  }
+
+  void _olvidoPassword() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ForgotPasswordScreen(),
+      ),
+    );
+  }
+
+  void _crearCuenta() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const RegisterScreen(),
+      ),
+    );
+  }
+
+  // =====================================================
+  // ACCESO TEMPORAL A ADMINISTRADOR (DEMO)
+  // ⚠️ ELIMINAR CUANDO YA NO SEA NECESARIO
+  // =====================================================
+  void _accesoTemporalAdmin() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(28),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 25),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // INDICADOR SUPERIOR
+                Container(
+                  width: 45,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+
+                // TÍTULO
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.admin_panel_settings,
+                      color: Color(0xFF1B5E20),
+                      size: 30,
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Acceso temporal de administrador',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF263238),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Selecciona el perfil que deseas probar:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                // =====================================================
+                // PERFILES ADMINISTRATIVOS
+                // =====================================================
+
+                // ADMINISTRADOR DE INCENDIOS
+                _opcionPerfilAdmin(
+                  context: context,
+                  icono: Icons.local_fire_department_outlined,
+                  titulo: 'Administrador de Incendios',
+                  subtitulo: 'Gestión de reportes, estadísticas y mapa de incendios',
+                  rol: 'Administrador de reportes',
+                  area: 'Incendios forestales',
+                ),
+
+                const SizedBox(height: 10),
+
+                // ADMINISTRADOR DE TALA ILEGAL
+                _opcionPerfilAdmin(
+                  context: context,
+                  icono: Icons.forest_outlined,
+                  titulo: 'Administrador de Tala Ilegal',
+                  subtitulo: 'Gestión de reportes, estadísticas y mapa de tala ilegal',
+                  rol: 'Administrador de reportes',
+                  area: 'Tala ilegal',
+                ),
+
+                const SizedBox(height: 10),
+
+                // ADMINISTRADOR GLOBAL
+                _opcionPerfilAdmin(
+                  context: context,
+                  icono: Icons.admin_panel_settings_outlined,
+                  titulo: 'Administrador Global',
+                  subtitulo: 'Control general y administración completa de GreenShield',
+                  rol: 'Superadministrador',
+                  area: 'Sistema completo',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _opcionPerfilAdmin({
+    required BuildContext context,
+    required IconData icono,
+    required String titulo,
+    required String subtitulo,
+    required String rol,
+    required String area,
+  }) {
+    return Material(
+      color: const Color(0xFFF4F8F5),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.pop(context);
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AdminHomeScreen(
+                rol: rol,
+                area: area,
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icono,
+                  color: const Color(0xFF1B5E20),
+                  size: 26,
+                ),
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titulo,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF263238),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitulo,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 17,
+                color: Colors.black38,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(30),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 450,
+            ),
+            child: Card(
+              elevation: 8,
+              shadowColor: Colors.black26,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(35),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+
+                    // LOGO
+                    Image.asset(
+                      'assets/images/logo_mambo.png',
+                      width: 150,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // NOMBRE DE LA APP
+                    const Text(
+                      'GreenShield',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF145A32),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // DESCRIPCIÓN
+                    const Text(
+                      'Sistema de Monitoreo Ambiental',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // TÍTULO
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Inicio de sesión',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 25),
+
+                    // CORREO ELECTRÓNICO
+                    TextField(
+                      controller: _usuarioController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Correo electrónico',
+                        hintText: 'ejemplo@correo.com',
+                        prefixIcon: const Icon(
+                          Icons.email_outlined,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF145A32),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // CONTRASEÑA
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _ocultarPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Contraseña',
+                        hintText: 'Ingresa tu contraseña',
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _ocultarPassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _ocultarPassword =
+                                  !_ocultarPassword;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF145A32),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // OLVIDÓ SU CONTRASEÑA
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _olvidoPassword,
+                        child: const Text(
+                          '¿Olvidaste tu contraseña?',
+                          style: TextStyle(
+                            color: Color(0xFF145A32),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    if (_error != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 8),
+                        child: Text(
+                          _error!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.redAccent),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 15),
+
+                    // BOTÓN INICIAR SESIÓN
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _cargando ? null : _iniciarSesion,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color(0xFF145A32),
+                          foregroundColor: Colors.white,
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          _cargando ? 'CONECTANDO...' : 'INICIAR SESIÓN',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 25),
+
+                    // CREAR CUENTA
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          '¿No tienes una cuenta?',
+                          style: TextStyle(
+                            color: Colors.black54,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _crearCuenta,
+                          child: const Text(
+                            'Crear cuenta',
+                            style: TextStyle(
+                              color: Color(0xFF145A32),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // NUEVA FUNCIÓN: verificación del correo registrado.
+                    TextButton.icon(
+                      onPressed: _cargando ? null : _verificarCorreo,
+                      icon: const Icon(Icons.mark_email_read_outlined),
+                      label: const Text('Tengo un código de verificación'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF145A32),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // =====================================
+                    // ACCESO TEMPORAL A ADMIN (DEMO)
+                    // ⚠️ ELIMINAR DESPUÉS
+                    // =====================================
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton.icon(
+                        onPressed: _accesoTemporalAdmin,
+                        icon: const Icon(
+                          Icons.admin_panel_settings,
+                          color: Color(0xFF1B5E20),
+                        ),
+                        label: const Text(
+                          'Acceso temporal admin',
+                          style: TextStyle(
+                            color: Color(0xFF1B5E20),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: Color(0xFF1B5E20),
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    // AVISO DE SEGURIDAD
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.verified_user_outlined,
+                          size: 16,
+                          color: Colors.black45,
+                        ),
+                        SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Acceso exclusivo para usuarios registrados',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.black45,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // EMPRESA
+                    const Text(
+                      'M.A.M.B.O.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF145A32),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+-------------------------------------------------------------------
+//register_screen
+import 'package:flutter/material.dart';
+import '../services/greenshield_api.dart';
+import 'email_verification_screen.dart';
+
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _nombresController =
+      TextEditingController();
+
+  final TextEditingController _apellidoPaternoController =
+      TextEditingController();
+
+  final TextEditingController _apellidoMaternoController =
+      TextEditingController();
+
+  final TextEditingController _fechaNacimientoController =
+      TextEditingController();
+
+  final TextEditingController _correoController =
+      TextEditingController();
+
+  final TextEditingController _telefonoController =
+      TextEditingController();
+
+  final TextEditingController _passwordController =
+      TextEditingController();
+
+  final TextEditingController _confirmarPasswordController =
+      TextEditingController();
+
+  bool _ocultarPassword = true;
+  bool _ocultarConfirmacion = true;
+  DateTime? _fechaSeleccionada;
+  bool _cargando = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nombresController.dispose();
+    _apellidoPaternoController.dispose();
+    _apellidoMaternoController.dispose();
+    _fechaNacimientoController.dispose();
+    _correoController.dispose();
+    _telefonoController.dispose();
+    _passwordController.dispose();
+    _confirmarPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _seleccionarFecha() async {
+    final DateTime? fecha = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      helpText: 'Selecciona tu fecha de nacimiento',
+    );
+
+    if (fecha != null && mounted) {
+      setState(() {
+        _fechaSeleccionada = fecha;
+        _fechaNacimientoController.text =
+            '${fecha.day.toString().padLeft(2, '0')}/'
+            '${fecha.month.toString().padLeft(2, '0')}/'
+            '${fecha.year}';
+      });
+    }
+  }
+
+  String get _fechaISO {
+    final fecha = _fechaSeleccionada!;
+    return '${fecha.year.toString().padLeft(4, '0')}-'
+        '${fecha.month.toString().padLeft(2, '0')}-'
+        '${fecha.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _crearCuenta() async {
+    final campos = [
+      _nombresController.text.trim(),
+      _apellidoPaternoController.text.trim(),
+      _apellidoMaternoController.text.trim(),
+      _correoController.text.trim(),
+      _passwordController.text,
+      _confirmarPasswordController.text,
+    ];
+    if (campos.any((campo) => campo.isEmpty) || _fechaSeleccionada == null) {
+      setState(() => _error = 'Por favor, completa todos los campos obligatorios.');
+      return;
+    }
+    if (!_correoController.text.trim().contains('@')) {
+      setState(() => _error = 'Ingresa un correo electrónico válido.');
+      return;
+    }
+    if (_passwordController.text.length < 8) {
+      setState(() => _error = 'La contraseña debe contener al menos 8 caracteres.');
+      return;
+    }
+    if (_passwordController.text != _confirmarPasswordController.text) {
+      setState(() => _error = 'Las contraseñas no coinciden.');
+      return;
+    }
+
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+    try {
+      final correo = _correoController.text.trim().toLowerCase();
+      final respuesta = await GreenShieldApi.instance.registrar({
+        'nombres': _nombresController.text.trim(),
+        'apellido_paterno': _apellidoPaternoController.text.trim(),
+        'apellido_materno': _apellidoMaternoController.text.trim(),
+        'fecha_nacimiento': _fechaISO,
+        'correo': correo,
+        'telefono': _telefonoController.text.trim().isEmpty
+            ? null
+            : _telefonoController.text.trim(),
+        'contrasena': _passwordController.text,
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(respuesta['mensaje']?.toString() ?? 'Cuenta registrada.')),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EmailVerificationScreen(correo: correo),
+        ),
+      );
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  InputDecoration _decoracionCampo({
+    required String label,
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(
+          color: Color(0xFF145A32),
+          width: 2,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF4F8F5),
+        elevation: 0,
+        foregroundColor: const Color(0xFF145A32),
+        title: const Text(
+          'Crear cuenta',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            30,
+            10,
+            30,
+            40,
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 500,
+            ),
+            child: Card(
+              elevation: 8,
+              shadowColor: Colors.black26,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(35),
+                child: Column(
+                  children: [
+                    Image.asset(
+                      'assets/images/logo_mambo.png',
+                      width: 120,
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    const Text(
+                      'Crear cuenta',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF145A32),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    const Text(
+                      'Regístrate para utilizar GreenShield',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black54,
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // DATOS PERSONALES
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Datos personales',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _nombresController,
+                      decoration: _decoracionCampo(
+                        label: 'Nombres',
+                        hint: 'Ingresa tus nombres',
+                        icon: Icons.person_outline,
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _apellidoPaternoController,
+                      decoration: _decoracionCampo(
+                        label: 'Apellido paterno',
+                        hint: 'Ingresa tu apellido paterno',
+                        icon: Icons.person_outline,
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _apellidoMaternoController,
+                      decoration: _decoracionCampo(
+                        label: 'Apellido materno',
+                        hint: 'Ingresa tu apellido materno',
+                        icon: Icons.person_outline,
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _fechaNacimientoController,
+                      readOnly: true,
+                      onTap: _seleccionarFecha,
+                      decoration: _decoracionCampo(
+                        label: 'Fecha de nacimiento',
+                        hint: 'Selecciona tu fecha',
+                        icon: Icons.calendar_today_outlined,
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // DATOS DE ACCESO
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Datos de acceso',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _correoController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: _decoracionCampo(
+                        label: 'Correo electrónico',
+                        hint: 'ejemplo@correo.com',
+                        icon: Icons.email_outlined,
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _telefonoController,
+                      keyboardType: TextInputType.phone,
+                      decoration: _decoracionCampo(
+                        label: 'Teléfono (opcional)',
+                        hint: 'Ingresa tu número telefónico',
+                        icon: Icons.phone_outlined,
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _ocultarPassword,
+                      decoration: _decoracionCampo(
+                        label: 'Contraseña',
+                        hint: 'Crea una contraseña',
+                        icon: Icons.lock_outline,
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _ocultarPassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _ocultarPassword =
+                                  !_ocultarPassword;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _confirmarPasswordController,
+                      obscureText: _ocultarConfirmacion,
+                      decoration: _decoracionCampo(
+                        label: 'Confirmar contraseña',
+                        hint: 'Repite tu contraseña',
+                        icon: Icons.lock_outline,
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _ocultarConfirmacion
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _ocultarConfirmacion =
+                                  !_ocultarConfirmacion;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+
+                    if (_error != null) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
+                    ],
+
+                    const SizedBox(height: 30),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _cargando ? null : _crearCuenta,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color(0xFF145A32),
+                          foregroundColor: Colors.white,
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          _cargando ? 'REGISTRANDO...' : 'CREAR CUENTA',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      'Al crear una cuenta podrás enviar reportes '
+                      'y consultar su seguimiento.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black45,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      icon: const Icon(
+                        Icons.arrow_back,
+                      ),
+                      label: const Text(
+                        'Volver al inicio de sesión',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+-----------------------------------------------------------------------
+//forgot_password
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../services/greenshield_api.dart';
+
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({super.key});
+
+  @override
+  State<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
+}
+
+class _ForgotPasswordScreenState
+    extends State<ForgotPasswordScreen> {
+  final TextEditingController _correoController = TextEditingController();
+  final TextEditingController _codigoController = TextEditingController();
+  final TextEditingController _nuevaController = TextEditingController();
+  final TextEditingController _confirmarController = TextEditingController();
+  bool _codigoSolicitado = false;
+  bool _cargando = false;
+  bool _mostrarClave = false;
+  String? _mensaje;
+
+  @override
+  void dispose() {
+    _correoController.dispose();
+    _codigoController.dispose();
+    _nuevaController.dispose();
+    _confirmarController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _solicitarCodigo() async {
+    final correo = _correoController.text.trim().toLowerCase();
+    if (!correo.contains('@')) {
+      setState(() => _mensaje = 'Escribe un correo electrónico válido.');
+      return;
+    }
+    setState(() {
+      _cargando = true;
+      _mensaje = null;
+    });
+    try {
+      final respuesta = await GreenShieldApi.instance.solicitarRecuperacion(correo);
+      if (!mounted) return;
+      setState(() {
+        _codigoSolicitado = true;
+        _mensaje = respuesta['mensaje']?.toString();
+      });
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _mensaje = e.message);
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  Future<void> _restablecer() async {
+    if (_codigoController.text.length != 6 ||
+        _nuevaController.text.length < 8 ||
+        _nuevaController.text != _confirmarController.text) {
+      setState(() => _mensaje =
+          'Revisa el código de 6 dígitos y confirma una contraseña nueva de al menos 8 caracteres.');
+      return;
+    }
+    setState(() {
+      _cargando = true;
+      _mensaje = null;
+    });
+    try {
+      await GreenShieldApi.instance.confirmarRecuperacion(
+        _correoController.text.trim().toLowerCase(),
+        _codigoController.text,
+        _nuevaController.text,
+      );
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Contraseña actualizada'),
+          content: const Text('Ya puedes iniciar sesión con tu nueva contraseña.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Aceptar'),
+            ),
+          ],
+        ),
+      );
+      if (mounted) Navigator.pop(context);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _mensaje = e.message);
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  InputDecoration _decoracionCampo(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF145A32), width: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF4F8F5),
+        elevation: 0,
+        foregroundColor: const Color(0xFF145A32),
+        title: const Text(
+          'Recuperar contraseña',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(30),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 450,
+            ),
+            child: Card(
+              elevation: 8,
+              shadowColor: Colors.black26,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(35),
+                child: Column(
+                  children: [
+                    Image.asset(
+                      'assets/images/logo_mambo.png',
+                      width: 130,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Text(
+                      _codigoSolicitado
+                          ? 'Introduce el código recibido'
+                          : '¿Olvidaste tu contraseña?',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF145A32),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      _codigoSolicitado
+                          ? 'Revisa tu correo e introduce el código de 6 dígitos junto con tu nueva contraseña.'
+                          : 'Ingresa el correo electrónico asociado a tu cuenta para recibir un código de recuperación.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    TextField(
+                      controller: _correoController,
+                      enabled: !_codigoSolicitado,
+                      keyboardType:
+                          TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Correo electrónico',
+                        hintText: 'ejemplo@correo.com',
+                        prefixIcon: const Icon(
+                          Icons.email_outlined,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(14),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF145A32),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    if (_codigoSolicitado) ...[
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: _codigoController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(6),
+                        ],
+                        decoration: _decoracionCampo(
+                          'Código de 6 dígitos',
+                          Icons.pin_outlined,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: _nuevaController,
+                        obscureText: !_mostrarClave,
+                        decoration: _decoracionCampo(
+                          'Nueva contraseña',
+                          Icons.lock_outline,
+                        ).copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(_mostrarClave
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined),
+                            onPressed: () => setState(() => _mostrarClave = !_mostrarClave),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: _confirmarController,
+                        obscureText: !_mostrarClave,
+                        decoration: _decoracionCampo(
+                          'Confirmar contraseña',
+                          Icons.lock_outline,
+                        ),
+                      ),
+                    ],
+                    if (_mensaje != null) ...[
+                      const SizedBox(height: 16),
+                      Text(_mensaje!, textAlign: TextAlign.center),
+                    ],
+
+                    const SizedBox(height: 25),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _cargando ? null : (_codigoSolicitado ? _restablecer : _solicitarCodigo),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              const Color(0xFF145A32),
+                          foregroundColor: Colors.white,
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          _cargando
+                              ? 'PROCESANDO...'
+                              : (_codigoSolicitado ? 'CAMBIAR CONTRASEÑA' : 'ENVIAR CÓDIGO'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    if (_codigoSolicitado) ...[
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: _cargando ? null : _solicitarCodigo,
+                        child: const Text('Solicitar otro código'),
+                      ),
+                    ],
+
+                    const SizedBox(height: 20),
+
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      icon: const Icon(
+                        Icons.arrow_back,
+                      ),
+                      label: const Text(
+                        'Volver al inicio de sesión',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+--------------------------------------------------------------------
+//email_verification_screen
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../services/greenshield_api.dart';
+
+/// Nueva pantalla, diseñada con la misma línea visual que las pantallas v1.
+class EmailVerificationScreen extends StatefulWidget {
+  final String correo;
+
+  const EmailVerificationScreen({super.key, required this.correo});
+
+  @override
+  State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
+}
+
+class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
+  final TextEditingController _codigoController = TextEditingController();
+  bool _enviando = false;
+  String? _mensaje;
+
+  @override
+  void dispose() {
+    _codigoController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirmar() async {
+    if (_codigoController.text.trim().length != 6) {
+      setState(() => _mensaje = 'Ingresa los seis números que recibiste por correo.');
+      return;
+    }
+
+    setState(() {
+      _enviando = true;
+      _mensaje = null;
+    });
+    try {
+      await GreenShieldApi.instance.verificarRegistro(
+        widget.correo,
+        _codigoController.text.trim(),
+      );
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Correo verificado'),
+          content: const Text('Tu cuenta ya está verificada. Puedes iniciar sesión.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Aceptar'),
+            ),
+          ],
+        ),
+      );
+      if (mounted) {
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _mensaje = e.message);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  Future<void> _reenviar() async {
+    String password = '';
+    final clave = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reenviar código'),
+        content: TextField(
+          obscureText: true,
+          autofocus: true,
+          onChanged: (value) => password = value,
+          decoration: InputDecoration(
+            labelText: 'Contraseña de tu cuenta',
+            prefixIcon: const Icon(Icons.lock_outline),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, password),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF145A32),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Reenviar'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || clave == null || clave.isEmpty) return;
+
+    setState(() {
+      _enviando = true;
+      _mensaje = null;
+    });
+    try {
+      final respuesta = await GreenShieldApi.instance.reenviarVerificacion(
+        widget.correo,
+        clave,
+      );
+      if (mounted) {
+        setState(() => _mensaje = respuesta['mensaje']?.toString() ??
+            'Enviamos otro código a tu correo.');
+      }
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _mensaje = e.message);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF4F8F5),
+        elevation: 0,
+        foregroundColor: const Color(0xFF145A32),
+        title: const Text(
+          'Verificar correo',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(30),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 450),
+            child: Card(
+              elevation: 8,
+              shadowColor: Colors.black26,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(35),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset('assets/images/logo_mambo.png', width: 120),
+                    const SizedBox(height: 15),
+                    const Icon(
+                      Icons.mark_email_read_outlined,
+                      size: 40,
+                      color: Color(0xFF145A32),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Confirma tu cuenta',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF145A32),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Enviamos un código de 6 dígitos a ${widget.correo}.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 30),
+                    TextField(
+                      controller: _codigoController,
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(fontSize: 23, letterSpacing: 7),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(6),
+                      ],
+                      decoration: InputDecoration(
+                        labelText: 'Código de 6 dígitos',
+                        prefixIcon: const Icon(Icons.pin_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF145A32),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_mensaje != null) ...[
+                      const SizedBox(height: 16),
+                      Text(_mensaje!, textAlign: TextAlign.center),
+                    ],
+                    const SizedBox(height: 25),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _enviando ? null : _confirmar,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF145A32),
+                          foregroundColor: Colors.white,
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          _enviando ? 'VERIFICANDO...' : 'VERIFICAR CORREO',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton.icon(
+                      onPressed: _enviando ? null : _reenviar,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reenviar código'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF145A32),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'El código vence a los 15 minutos y solo se puede usar una vez.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.black45, fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Volver'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF145A32),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

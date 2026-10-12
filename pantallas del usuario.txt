@@ -1,0 +1,5316 @@
+//user_home_screen
+import 'package:flutter/material.dart';
+
+// Pantallas que ya tenemos creadas
+import 'profile_screen.dart';
+import 'login_screen.dart';
+import '../services/greenshield_api.dart';
+import 'notifications_screen.dart';
+import 'reports_screen.dart';
+import 'report_tracking_screen.dart';
+import 'settings_screen.dart';
+import 'fire_report_screen.dart';
+import 'illegal_logging_report_screen.dart';
+
+// Nueva pantalla de noticias
+import 'news_screen.dart';
+
+class UserHomeScreen extends StatelessWidget {
+  const UserHomeScreen({super.key});
+
+  // ============================================================
+  // FUNCIÓN PARA CERRAR SESIÓN
+  // ============================================================
+  //
+  // Revoca el JWT actual en FastAPI y regresa al login.
+  // Si no hay conexión, elimina el token local y su caducidad
+  // en el servidor ocurrirá según la configuración de JWT.
+  // ============================================================
+
+  Future<void> _cerrarSesion(BuildContext context) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Deseas cerrar tu sesión de GreenShield?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Cerrar sesión')),
+        ],
+      ),
+    );
+    if (confirmar != true) return;
+    try {
+      await GreenShieldApi.instance.logout();
+    } catch (_) {
+      // El JWT local se elimina incluso si no hay red; en el servidor
+      // seguirá siendo válido hasta caducar si no pudo revocarse.
+    }
+    if (!context.mounted) return;
+    Navigator.pushAndRemoveUntil(context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
+  }
+
+  // ============================================================
+  // FUNCIÓN PARA CREAR ELEMENTOS DEL MENÚ
+  // ============================================================
+  //
+  // Se utiliza para evitar repetir el mismo código en cada
+  // opción del Drawer.
+  // ============================================================
+
+  Widget _menuItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: const Color(0xFF145A32),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+
+      // ==========================================================
+      // MENÚ LATERAL
+      // ==========================================================
+
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+
+              // --------------------------------------------------
+              // ENCABEZADO DEL MENÚ
+              // --------------------------------------------------
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 30,
+                  horizontal: 20,
+                ),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF145A32),
+                ),
+                child: Column(
+                  children: [
+
+                    // Avatar del usuario
+                    const CircleAvatar(
+                      radius: 38,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.person,
+                        size: 45,
+                        color: Color(0xFF145A32),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    const Text(
+                      'Bienvenido',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 5),
+
+                    const Text(
+                      'Usuario GreenShield',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // --------------------------------------------------
+              // OPCIONES DEL MENÚ
+              // --------------------------------------------------
+
+              const SizedBox(height: 10),
+
+              // Mi perfil
+              _menuItem(
+                context: context,
+                icon: Icons.person_outline,
+                title: 'Mi perfil',
+                onTap: () {
+                  Navigator.pop(context);
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              // --------------------------------------------------
+              // NOTICIAS
+              // --------------------------------------------------
+              //
+              // Las noticias son información general:
+              // - Prevención de incendios
+              // - Información ambiental
+              // - Tala ilegal
+              // - Actualizaciones de GreenShield
+              //
+              // NO son las notificaciones personales del usuario.
+              // --------------------------------------------------
+
+              _menuItem(
+                context: context,
+                icon: Icons.article_outlined,
+                title: 'Noticias',
+                onTap: () {
+                  Navigator.pop(context);
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NewsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              // Mis reportes
+              _menuItem(
+                context: context,
+                icon: Icons.description_outlined,
+                title: 'Mis reportes',
+                onTap: () {
+                  Navigator.pop(context);
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ReportsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              // Seguimiento de reportes
+              _menuItem(
+                context: context,
+                icon: Icons.track_changes,
+                title: 'Seguimiento de reportes',
+                onTap: () {
+                  Navigator.pop(context);
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const ReportTrackingScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              // Configuración
+              _menuItem(
+                context: context,
+                icon: Icons.settings_outlined,
+                title: 'Configuración',
+                onTap: () {
+                  Navigator.pop(context);
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const Divider(
+                thickness: 1,
+                indent: 15,
+                endIndent: 15,
+              ),
+
+              // --------------------------------------------------
+              // CERRAR SESIÓN
+              // --------------------------------------------------
+
+              _menuItem(
+                context: context,
+                icon: Icons.logout,
+                title: 'Cerrar sesión',
+                onTap: () {
+                  Navigator.pop(context);
+                  _cerrarSesion(context);
+                },
+              ),
+
+              const Spacer(),
+
+              // --------------------------------------------------
+              // VERSIÓN
+              // --------------------------------------------------
+
+              const Padding(
+                padding: EdgeInsets.only(bottom: 15),
+                child: Text(
+                  'GreenShield v1.0.0',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      // ==========================================================
+      // BARRA SUPERIOR
+      // ==========================================================
+
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 1,
+
+        // Título
+        title: const Text(
+          'GreenShield',
+          style: TextStyle(
+            color: Color(0xFF145A32),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        // --------------------------------------------------------
+        // BOTÓN DE NOTIFICACIONES
+        // --------------------------------------------------------
+        //
+        // Ahora las notificaciones están aquí y ya NO aparecen
+        // dentro del menú lateral.
+        // --------------------------------------------------------
+
+        actions: [
+          IconButton(
+            tooltip: 'Notificaciones',
+            icon: const Icon(
+              Icons.notifications_none,
+              color: Color(0xFF145A32),
+              size: 28,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      const NotificationsScreen(),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(width: 8),
+        ],
+      ),
+
+      // ==========================================================
+      // CONTENIDO PRINCIPAL
+      // ==========================================================
+
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+
+              // --------------------------------------------------
+              // LOGO
+              // --------------------------------------------------
+
+              Image.asset(
+                'assets/images/logo_mambo.png',
+                height: 110,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.eco,
+                    size: 90,
+                    color: Color(0xFF145A32),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 15),
+
+              // --------------------------------------------------
+              // MENSAJE DE BIENVENIDA
+              // --------------------------------------------------
+
+              const Text(
+                '¡Bienvenido a GreenShield!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF145A32),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              const Text(
+                'Selecciona el tipo de reporte que deseas realizar.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black54,
+                ),
+              ),
+
+              const SizedBox(height: 35),
+
+              // ==================================================
+              // BOTÓN: REPORTE DE INCENDIOS
+              // ==================================================
+
+              _reporteButton(
+                context: context,
+                icon: Icons.local_fire_department,
+                title: 'Reporte de incendios',
+                subtitle: 'Reportar un posible incendio forestal',
+                color: const Color(0xFFD84315),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FireReportScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // ==================================================
+              // BOTÓN: REPORTE DE TALA ILEGAL
+              // ==================================================
+
+              _reporteButton(
+                context: context,
+                icon: Icons.forest,
+                title: 'Reporte de tala ilegal',
+                subtitle: 'Reportar una posible tala ilegal',
+                color: const Color(0xFF2E7D32),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const IllegalLoggingReportScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 30),
+
+              // --------------------------------------------------
+              // INFORMACIÓN
+              // --------------------------------------------------
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Color(0xFF145A32),
+                      size: 28,
+                    ),
+
+                    SizedBox(width: 12),
+
+                    Expanded(
+                      child: Text(
+                        'Utiliza GreenShield para enviar reportes '
+                        'sobre posibles incendios forestales o tala ilegal.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF145A32),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // BOTÓN PRINCIPAL DE REPORTE
+  // ============================================================
+
+  Widget _reporteButton({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+
+          padding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 22,
+          ),
+
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+
+          elevation: 3,
+        ),
+
+        child: Row(
+          children: [
+
+            // Icono
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.20),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 35,
+              ),
+            ),
+
+            const SizedBox(width: 18),
+
+            // Texto
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 5),
+
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+---------------------------------------------------------------------
+//perfile_screen
+import 'package:flutter/material.dart';
+import 'change_email_screen.dart';
+
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key, this.guardarTelefonoEnApi});
+
+  /// Debe llamar al endpoint autenticado del backend y lanzar una
+  /// excepción si la actualización no se guardó en la base de datos.
+  /// Al no proporcionarse, el perfil no simula falsamente el guardado.
+  final Future<void> Function(String numero)? guardarTelefonoEnApi;
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  // ============================================================
+  // DATOS DEL USUARIO
+  // ============================================================
+  //
+  // Estos datos todavía son de ejemplo. La lectura del perfil desde
+  // la base de datos debe conectarse al servicio de autenticación.
+  //
+  // IMPORTANTE:
+  // Nombre, apellidos y fecha de nacimiento NO serán editables
+  // de acuerdo con los requisitos establecidos para GreenShield.
+  // ============================================================
+
+  String nombre = 'Usuario';
+  String apellidoPaterno = 'GreenShield';
+  String apellidoMaterno = '';
+  String fechaNacimiento = '01/01/2000';
+
+  String correo = 'usuario@greenshield.com';
+  String telefono = '961 000 0000';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
+
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF4F8F5),
+        elevation: 0,
+        foregroundColor: const Color(0xFF145A32),
+        title: const Text(
+          'Mi perfil',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          children: [
+            // ==================================================
+            // FOTO / ICONO DEL USUARIO
+            // ==================================================
+
+            const CircleAvatar(
+              radius: 50,
+              backgroundColor: Color(0xFF145A32),
+              child: Icon(
+                Icons.person,
+                size: 55,
+                color: Colors.white,
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            Text(
+              '$nombre $apellidoPaterno',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF145A32),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // ==================================================
+            // DATOS PERSONALES
+            // ==================================================
+
+            _seccionTitulo('Datos personales'),
+
+            _campoInformacion(
+              icon: Icons.person_outline,
+              titulo: 'Nombre',
+              valor: nombre,
+              editable: false,
+            ),
+
+            _campoInformacion(
+              icon: Icons.person_outline,
+              titulo: 'Apellido paterno',
+              valor: apellidoPaterno,
+              editable: false,
+            ),
+
+            _campoInformacion(
+              icon: Icons.person_outline,
+              titulo: 'Apellido materno',
+              valor: apellidoMaterno.isEmpty
+                  ? 'No registrado'
+                  : apellidoMaterno,
+              editable: false,
+            ),
+
+            _campoInformacion(
+              icon: Icons.calendar_today_outlined,
+              titulo: 'Fecha de nacimiento',
+              valor: fechaNacimiento,
+              editable: false,
+            ),
+
+            const SizedBox(height: 25),
+
+            // ==================================================
+            // DATOS DE CONTACTO
+            // ==================================================
+
+            _seccionTitulo('Datos de contacto'),
+
+            _campoEditable(
+              icon: Icons.email_outlined,
+              titulo: 'Correo electrónico',
+              valor: correo,
+              onTap: _cambiarCorreo,
+
+            ),
+
+            _campoEditable(
+              icon: Icons.phone_outlined,
+              titulo: 'Teléfono',
+              valor: telefono,
+              onTap: () {
+                _editarTelefono();
+              },
+            ),
+
+            const SizedBox(height: 25),
+
+            // ==================================================
+            // CONTRASEÑA
+            // ==================================================
+
+            _seccionTitulo('Seguridad'),
+
+            ListTile(
+              tileColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              leading: const Icon(
+                Icons.lock_outline,
+                color: Color(0xFF145A32),
+              ),
+              title: const Text(
+                'Contraseña',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: const Text(
+                'Cambiar contraseña',
+              ),
+              trailing: const Icon(
+                Icons.chevron_right,
+              ),
+              onTap: () {
+                _cambiarPassword(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // TÍTULO DE SECCIÓN
+  // ============================================================
+
+  Widget _seccionTitulo(String titulo) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Text(
+          titulo,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF145A32),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // INFORMACIÓN NO EDITABLE
+  // ============================================================
+
+  Widget _campoInformacion({
+    required IconData icon,
+    required String titulo,
+    required String valor,
+    required bool editable,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: const Color(0xFF145A32),
+        ),
+        title: Text(
+          titulo,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.black54,
+          ),
+        ),
+        subtitle: Text(
+          valor,
+          style: const TextStyle(
+            fontSize: 15,
+            color: Colors.black87,
+          ),
+        ),
+        trailing: const Icon(
+          Icons.lock_outline,
+          size: 18,
+          color: Colors.black38,
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // INFORMACIÓN EDITABLE
+  // ============================================================
+
+  Widget _campoEditable({
+    required IconData icon,
+    required String titulo,
+    required String valor,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: const Color(0xFF145A32),
+        ),
+        title: Text(
+          titulo,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.black54,
+          ),
+        ),
+        subtitle: Text(
+          valor,
+          style: const TextStyle(
+            fontSize: 15,
+            color: Colors.black87,
+          ),
+        ),
+        trailing: const Icon(
+          Icons.edit_outlined,
+          size: 20,
+          color: Color(0xFF145A32),
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  // ============================================================
+  // CAMBIAR CORREO VERIFICADO / EDITAR TELÉFONO SIMULADO
+  // ============================================================
+
+  Future<void> _cambiarCorreo() async {
+    final nuevoCorreo = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (context) => const ChangeEmailScreen()),
+    );
+    if (!mounted || nuevoCorreo == null) return;
+    setState(() => correo = nuevoCorreo);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Correo electrónico actualizado correctamente.')),
+    );
+  }
+
+  Future<void> _editarTelefono() async {
+    final controller = TextEditingController(text: telefono);
+    bool guardando = false;
+    String? mensaje;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogBuildContext, actualizarDialogo) => AlertDialog(
+          title: const Text('Cambiar Teléfono'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.phone,
+                enabled: !guardando,
+                decoration: const InputDecoration(
+                  labelText: 'Teléfono',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (mensaje != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  mensaje!,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: guardando
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: guardando ? null : () async {
+                final nuevoNumero = controller.text.trim();
+                final soloDigitos = nuevoNumero.replaceAll(RegExp(r'[^0-9]'), '');
+                if (soloDigitos.length < 10 || soloDigitos.length > 15) {
+                  actualizarDialogo(() {
+                    mensaje = 'Introduce un número válido de 10 a 15 dígitos.';
+                  });
+                  return;
+                }
+                if (nuevoNumero == telefono) {
+                  Navigator.of(dialogContext).pop();
+                  return;
+                }
+                final guardar = widget.guardarTelefonoEnApi;
+                if (guardar == null) {
+                  actualizarDialogo(() {
+                    mensaje = 'No se guardó el teléfono: todavía falta conectar '
+                        'el servicio de actualización del perfil con la API.';
+                  });
+                  return;
+                }
+
+                actualizarDialogo(() {
+                  guardando = true;
+                  mensaje = null;
+                });
+                try {
+                  await guardar(nuevoNumero);
+                  if (!mounted || !dialogContext.mounted) return;
+                  setState(() => telefono = nuevoNumero);
+                  Navigator.of(dialogContext).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Teléfono actualizado correctamente.'),
+                    ),
+                  );
+                } catch (error) {
+                  if (dialogContext.mounted) {
+                    actualizarDialogo(() {
+                      mensaje = 'No se pudo actualizar el teléfono: $error';
+                    });
+                  }
+                } finally {
+                  if (dialogContext.mounted) {
+                    actualizarDialogo(() => guardando = false);
+                  }
+                }
+              },
+              child: guardando
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+  }
+
+  // ============================================================
+  // CAMBIAR CONTRASEÑA
+  // ============================================================
+
+  void _cambiarPassword(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'La función para cambiar la contraseña se conectará posteriormente.',
+        ),
+      ),
+    );
+  }
+}
+------------------------------------------------------------------------------------------
+//notification_screen
+import 'package:flutter/material.dart';
+
+class NotificationsScreen extends StatelessWidget {
+  const NotificationsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // ============================================================
+    // NOTIFICACIONES
+    // ============================================================
+    //
+    // Actualmente utilizamos información de ejemplo.
+    //
+    // Posteriormente estas notificaciones vendrán del servidor
+    // dependiendo del estado de los reportes del usuario.
+    // ============================================================
+
+    final notifications = [
+      {
+        'icon': Icons.check_circle_outline,
+        'title': 'Reporte recibido',
+        'message':
+            'Tu reporte ha sido recibido correctamente.',
+        'time': 'Hace 10 minutos',
+      },
+      {
+        'icon': Icons.update,
+        'title': 'Reporte actualizado',
+        'message':
+            'El estado de uno de tus reportes ha cambiado.',
+        'time': 'Ayer',
+      },
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
+
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF4F8F5),
+        elevation: 0,
+        foregroundColor: const Color(0xFF145A32),
+        title: const Text(
+          'Notificaciones',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+
+      body: notifications.isEmpty
+          ? const Center(
+              child: Text(
+                'No tienes notificaciones.',
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 16,
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(20),
+              itemCount: notifications.length,
+              itemBuilder: (context, index) {
+                final notification = notifications[index];
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ListTile(
+                    contentPadding:
+                        const EdgeInsets.all(15),
+                    leading: Icon(
+                      notification['icon']
+                          as IconData,
+                      color: const Color(0xFF145A32),
+                      size: 30,
+                    ),
+                    title: Text(
+                      notification['title'] as String,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Padding(
+                      padding:
+                          const EdgeInsets.only(top: 5),
+                      child: Text(
+                        notification['message']
+                            as String,
+                      ),
+                    ),
+                    trailing: Text(
+                      notification['time'] as String,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.black45,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+----------------------------------------------------------------------------
+//report_screen
+import 'package:flutter/material.dart';
+
+class ReportsScreen extends StatelessWidget {
+  const ReportsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // ============================================================
+    // MIS REPORTES
+    // ============================================================
+    //
+    // Los reportes son de ejemplo por ahora.
+    //
+    // Posteriormente esta información se obtendrá de la base
+    // de datos mediante la API.
+    // ============================================================
+
+    final reports = [
+      {
+        'type': 'Incendio forestal',
+        'date': '29/09/2026',
+        'status': 'Recibido',
+        'icon': Icons.local_fire_department,
+      },
+      {
+        'type': 'Tala ilegal',
+        'date': '25/09/2026',
+        'status': 'En revisión',
+        'icon': Icons.forest,
+      },
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
+
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF4F8F5),
+        elevation: 0,
+        foregroundColor: const Color(0xFF145A32),
+        title: const Text(
+          'Mis reportes',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+
+      body: ListView.builder(
+        padding: const EdgeInsets.all(20),
+        itemCount: reports.length,
+        itemBuilder: (context, index) {
+          final report = reports[index];
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 15),
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 27,
+                        backgroundColor:
+                            const Color(0xFF145A32)
+                                .withValues(alpha: 0.1),
+                        child: Icon(
+                          report['icon'] as IconData,
+                          color: const Color(0xFF145A32),
+                        ),
+                      ),
+
+                      const SizedBox(width: 15),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              report['type'] as String,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              'Fecha: ${report['date']}',
+                              style: const TextStyle(
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius:
+                          BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Estado: ${report['status']}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+--------------------------------------------------------------------
+//report_tricking_screen
+import 'package:flutter/material.dart';
+
+class ReportTrackingScreen extends StatelessWidget {
+  const ReportTrackingScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
+
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF4F8F5),
+        elevation: 0,
+        foregroundColor: const Color(0xFF145A32),
+        title: const Text(
+          'Seguimiento de reportes',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Seguimiento',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF145A32),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            const Text(
+              'Aquí podrás consultar el avance de tus reportes.',
+              style: TextStyle(
+                color: Colors.black54,
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // ====================================================
+            // EJEMPLO DE ESTADO DEL REPORTE
+            // ====================================================
+
+            _estado(
+              icon: Icons.send,
+              titulo: 'Reporte enviado',
+              descripcion:
+                  'El reporte fue enviado correctamente.',
+              activo: true,
+            ),
+
+            _linea(),
+
+            _estado(
+              icon: Icons.fact_check_outlined,
+              titulo: 'En revisión',
+              descripcion:
+                  'El reporte está siendo revisado.',
+              activo: true,
+            ),
+
+            _linea(),
+
+            _estado(
+              icon: Icons.engineering_outlined,
+              titulo: 'Atención',
+              descripcion:
+                  'Pendiente de atención por parte de la autoridad.',
+              activo: false,
+            ),
+
+            _linea(),
+
+            _estado(
+              icon: Icons.check_circle_outline,
+              titulo: 'Finalizado',
+              descripcion:
+                  'El reporte ha sido atendido.',
+              activo: false,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _estado({
+    required IconData icon,
+    required String titulo,
+    required String descripcion,
+    required bool activo,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 25,
+          backgroundColor: activo
+              ? const Color(0xFF145A32)
+              : Colors.grey.shade300,
+          child: Icon(
+            icon,
+            color: activo
+                ? Colors.white
+                : Colors.grey.shade600,
+          ),
+        ),
+
+        const SizedBox(width: 15),
+
+        Expanded(
+          child: Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              Text(
+                titulo,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 4),
+
+              Text(
+                descripcion,
+                style: const TextStyle(
+                  color: Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _linea() {
+    return Container(
+      margin: const EdgeInsets.only(
+        left: 24,
+        top: 5,
+        bottom: 5,
+      ),
+      height: 35,
+      width: 2,
+      color: Colors.grey.shade300,
+    );
+  }
+}
+-------------------------------------------------------------------
+//sttings_screen
+import 'package:flutter/material.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+
+  // ============================================================
+  // CONFIGURACIÓN DE IDIOMA
+  // ============================================================
+  //
+  // Idioma seleccionado actualmente.
+  //
+  // IMPORTANTE:
+  // Cuando conectemos el sistema de traducciones, esta variable
+  // determinará el idioma de TODA la aplicación.
+  //
+  // Idiomas disponibles actualmente:
+  // - Español
+  // - English
+  //
+  // Si posteriormente queremos agregar otro idioma, solamente
+  // tendremos que agregarlo a la lista y al sistema de traducción.
+  // ============================================================
+
+  String idiomaSeleccionado = 'Español';
+
+  // ============================================================
+  // NOTIFICACIONES
+  // ============================================================
+  //
+  // Permite activar o desactivar las notificaciones.
+  //
+  // Posteriormente esta opción se puede conectar con Firebase
+  // Cloud Messaging u otro servicio de notificaciones.
+  // ============================================================
+
+  bool notificaciones = true;
+
+  // ============================================================
+  // SONIDOS
+  // ============================================================
+
+  bool sonidos = true;
+
+  // ============================================================
+  // VIBRACIÓN
+  // ============================================================
+  //
+  // Puede utilizarse para avisos importantes.
+  // ============================================================
+
+  bool vibracion = true;
+
+  // ============================================================
+  // MODO OSCURO
+  // ============================================================
+  //
+  // Actualmente cambia solamente el estado visual de esta
+  // configuración.
+  //
+  // Posteriormente lo conectaremos al ThemeMode de MaterialApp
+  // para que toda la aplicación cambie automáticamente.
+  // ============================================================
+
+  bool modoOscuro = false;
+
+  // ============================================================
+  // TAMAÑO DEL TEXTO
+  // ============================================================
+  //
+  // Este valor permitirá aumentar o disminuir el tamaño del texto.
+  //
+  // Más adelante podemos hacer que se aplique globalmente mediante
+  // MediaQuery.textScaler o un sistema de accesibilidad.
+  // ============================================================
+
+  double tamanioTexto = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8F5),
+
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF4F8F5),
+        elevation: 0,
+        foregroundColor: const Color(0xFF145A32),
+        title: const Text(
+          'Configuración',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+
+          // ======================================================
+          // SECCIÓN: IDIOMA
+          // ======================================================
+
+          _tituloSeccion(
+            'Idioma',
+            Icons.language,
+          ),
+
+          Card(
+            child: ListTile(
+              leading: const Icon(
+                Icons.translate,
+                color: Color(0xFF145A32),
+              ),
+
+              title: const Text(
+                'Idioma de la aplicación',
+              ),
+
+              subtitle: Text(
+                idiomaSeleccionado,
+              ),
+
+              trailing: DropdownButton<String>(
+                value: idiomaSeleccionado,
+
+                // ==================================================
+                // PARA AGREGAR MÁS IDIOMAS:
+                //
+                // Agrega el nuevo idioma aquí.
+                //
+                // Ejemplo:
+                // 'Francés',
+                // 'Português',
+                // ==================================================
+
+                items: const [
+                  DropdownMenuItem(
+                    value: 'Español',
+                    child: Text('Español'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'English',
+                    child: Text('English'),
+                  ),
+                ],
+
+                onChanged: (valor) {
+                  if (valor == null) return;
+
+                  setState(() {
+                    idiomaSeleccionado = valor;
+                  });
+
+                  // ==================================================
+                  // IMPORTANTE:
+                  //
+                  // Aquí posteriormente conectaremos el sistema
+                  // de traducciones de GreenShield.
+                  //
+                  // Actualmente solamente cambia el valor mostrado.
+                  // ==================================================
+                },
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // ======================================================
+          // SECCIÓN: NOTIFICACIONES
+          // ======================================================
+
+          _tituloSeccion(
+            'Notificaciones',
+            Icons.notifications_none,
+          ),
+
+          Card(
+            child: SwitchListTile(
+              secondary: const Icon(
+                Icons.notifications_none,
+                color: Color(0xFF145A32),
+              ),
+
+              title: const Text(
+                'Recibir notificaciones',
+              ),
+
+              subtitle: const Text(
+                'Avisos sobre tus reportes',
+              ),
+
+              value: notificaciones,
+
+              onChanged: (valor) {
+                setState(() {
+                  notificaciones = valor;
+                });
+              },
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // ======================================================
+          // SECCIÓN: SONIDO Y VIBRACIÓN
+          // ======================================================
+
+          _tituloSeccion(
+            'Sonido y vibración',
+            Icons.volume_up_outlined,
+          ),
+
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(
+                    Icons.volume_up_outlined,
+                    color: Color(0xFF145A32),
+                  ),
+                  title: const Text(
+                    'Sonidos',
+                  ),
+                  subtitle: const Text(
+                    'Reproducir sonidos de la aplicación',
+                  ),
+                  value: sonidos,
+                  onChanged: (valor) {
+                    setState(() {
+                      sonidos = valor;
+                    });
+                  },
+                ),
+
+                const Divider(
+                  height: 1,
+                ),
+
+                SwitchListTile(
+                  secondary: const Icon(
+                    Icons.vibration,
+                    color: Color(0xFF145A32),
+                  ),
+                  title: const Text(
+                    'Vibración',
+                  ),
+                  subtitle: const Text(
+                    'Vibrar para avisos importantes',
+                  ),
+                  value: vibracion,
+                  onChanged: (valor) {
+                    setState(() {
+                      vibracion = valor;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // ======================================================
+          // SECCIÓN: APARIENCIA
+          // ======================================================
+
+          _tituloSeccion(
+            'Apariencia',
+            Icons.palette_outlined,
+          ),
+
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(
+                    Icons.dark_mode_outlined,
+                    color: Color(0xFF145A32),
+                  ),
+                  title: const Text(
+                    'Modo oscuro',
+                  ),
+                  subtitle: const Text(
+                    'Cambiar la apariencia de la aplicación',
+                  ),
+                  value: modoOscuro,
+                  onChanged: (valor) {
+                    setState(() {
+                      modoOscuro = valor;
+                    });
+
+                    // ==================================================
+                    // POSTERIORMENTE:
+                    //
+                    // Aquí conectaremos esta variable con ThemeMode
+                    // para que TODA la aplicación cambie.
+                    // ==================================================
+                  },
+                ),
+
+                const Divider(
+                  height: 1,
+                ),
+
+                // ==================================================
+                // TAMAÑO DEL TEXTO
+                // ==================================================
+
+                ListTile(
+                  leading: const Icon(
+                    Icons.text_fields,
+                    color: Color(0xFF145A32),
+                  ),
+
+                  title: const Text(
+                    'Tamaño del texto',
+                  ),
+
+                  subtitle: Slider(
+                    min: 0.8,
+                    max: 1.5,
+                    divisions: 7,
+                    value: tamanioTexto,
+                    label:
+                        '${(tamanioTexto * 100).round()}%',
+
+                    onChanged: (valor) {
+                      setState(() {
+                        tamanioTexto = valor;
+                      });
+
+                      // ==================================================
+                      // POSTERIORMENTE:
+                      //
+                      // Este valor se aplicará globalmente al texto
+                      // de toda la aplicación.
+                      // ==================================================
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // ======================================================
+          // SECCIÓN: PRIVACIDAD
+          // ======================================================
+
+          _tituloSeccion(
+            'Privacidad y seguridad',
+            Icons.security_outlined,
+          ),
+
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(
+                    Icons.privacy_tip_outlined,
+                    color: Color(0xFF145A32),
+                  ),
+                  title: const Text(
+                    'Privacidad',
+                  ),
+                  subtitle: const Text(
+                    'Consulta cómo se utilizan tus datos',
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                  ),
+                  onTap: () {
+                    _mensaje(
+                      context,
+                      'Pantalla de privacidad próximamente.',
+                    );
+                  },
+                ),
+
+                const Divider(
+                  height: 1,
+                ),
+
+                ListTile(
+                  leading: const Icon(
+                    Icons.lock_outline,
+                    color: Color(0xFF145A32),
+                  ),
+                  title: const Text(
+                    'Seguridad',
+                  ),
+                  subtitle: const Text(
+                    'Opciones de seguridad de tu cuenta',
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                  ),
+                  onTap: () {
+                    _mensaje(
+                      context,
+                      'Opciones de seguridad próximamente.',
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // ======================================================
+          // SECCIÓN: INFORMACIÓN
+          // ======================================================
+
+          _tituloSeccion(
+            'Información',
+            Icons.info_outline,
+          ),
+
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(
+                    Icons.info_outline,
+                    color: Color(0xFF145A32),
+                  ),
+                  title: const Text(
+                    'Acerca de GreenShield',
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right,
+                  ),
+                  onTap: () {
+                    _mostrarAcercaDe(context);
+                  },
+                ),
+
+                const Divider(
+                  height: 1,
+                ),
+
+                const ListTile(
+                  leading: Icon(
+                    Icons.apps,
+                    color: Color(0xFF145A32),
+                  ),
+                  title: Text(
+                    'Versión',
+                  ),
+                  subtitle: Text(
+                    '1.0.0',
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 30),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // TÍTULO DE SECCIÓN
+  // ============================================================
+
+  Widget _tituloSeccion(
+    String titulo,
+    IconData icon,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        bottom: 10,
+        left: 5,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: const Color(0xFF145A32),
+          ),
+
+          const SizedBox(width: 8),
+
+          Text(
+            titulo,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF145A32),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // MENSAJE TEMPORAL
+  // ============================================================
+
+  void _mensaje(
+    BuildContext context,
+    String mensaje,
+  ) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+      ),
+    );
+  }
+
+  // ============================================================
+  // INFORMACIÓN DE GREENSHIELD
+  // ============================================================
+
+  void _mostrarAcercaDe(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'GreenShield',
+      applicationVersion: '1.0.0',
+      applicationLegalese:
+          'M.A.M.B.O. - Monitoreo Ambiental y Mapeo de Bosques Oportuno',
+    );
+  }
+}
+--------------------------------------------------------------------------------------
+//fire_report_screen
+import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
+
+import '../widgets/report_location_picker.dart';
+
+class FireReportScreen extends StatefulWidget {
+  const FireReportScreen({super.key});
+
+  @override
+  State<FireReportScreen> createState() => _FireReportScreenState();
+}
+
+class _FireReportScreenState extends State<FireReportScreen> {
+  // ============================================================
+  // PASOS DEL REPORTE
+  // ============================================================
+  //
+  // 0 = Información del incendio
+  // 1 = Evidencia
+  // 2 = Ubicación
+  // 3 = Confirmación
+  //
+  // Más adelante podemos agregar o quitar pasos si el proyecto
+  // cambia.
+  // ============================================================
+
+  int _currentStep = 0;
+
+  // ============================================================
+  // RESPUESTAS DEL CUESTIONARIO
+  // ============================================================
+
+  String? _tipoIncendio;
+  String? _estadoIncendio;
+  String? _queObserva;
+  String? _riesgo;
+
+  // Descripción escrita por el usuario.
+  final TextEditingController _descripcionController =
+      TextEditingController();
+
+  // ============================================================
+  // EVIDENCIAS
+  // ============================================================
+  //
+  // Por ahora solamente guardamos indicadores para representar
+  // las evidencias agregadas.
+  //
+  // Más adelante estos valores serán reemplazados por archivos
+  // reales obtenidos mediante cámara, galería y grabadora.
+  // ============================================================
+
+  bool _tieneFoto = false;
+  bool _tieneVideo = false;
+  bool _tieneAudio = false;
+
+  // ============================================================
+  // UBICACIÓN
+  // ============================================================
+
+  bool _ubicacionConfirmada = false;
+  LatLng? _coordenadasConfirmadas;
+
+  // ============================================================
+  // CONTROLADORES
+  // ============================================================
+
+  final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _descripcionController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // ============================================================
+  // AVANZAR AL SIGUIENTE PASO
+  // ============================================================
+
+  void _siguientePaso() {
+    // Validamos cada sección antes de continuar.
+
+    if (_currentStep == 0) {
+      if (!_validarInformacion()) {
+        return;
+      }
+    }
+
+    if (_currentStep == 1) {
+      if (!_validarEvidencia()) {
+        return;
+      }
+    }
+
+    if (_currentStep == 2) {
+      if (!_ubicacionConfirmada) {
+        _mostrarMensaje(
+          'Confirma la ubicación del reporte para continuar.',
+        );
+        return;
+      }
+    }
+
+    // Si todavía no estamos en el último paso,
+    // avanzamos.
+    if (_currentStep < 3) {
+      setState(() {
+        _currentStep++;
+      });
+
+      _pageController.animateToPage(
+        _currentStep,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  // ============================================================
+  // REGRESAR AL PASO ANTERIOR
+  // ============================================================
+
+  void _pasoAnterior() {
+    if (_currentStep > 0) {
+      setState(() {
+        _currentStep--;
+      });
+
+      _pageController.animateToPage(
+        _currentStep,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  // ============================================================
+  // VALIDAR INFORMACIÓN
+  // ============================================================
+
+  bool _validarInformacion() {
+    if (_tipoIncendio == null) {
+      _mostrarMensaje(
+        'Selecciona el tipo de incendio.',
+      );
+      return false;
+    }
+
+    if (_estadoIncendio == null) {
+      _mostrarMensaje(
+        'Indica si el incendio está activo.',
+      );
+      return false;
+    }
+
+    if (_queObserva == null) {
+      _mostrarMensaje(
+        'Indica qué observas.',
+      );
+      return false;
+    }
+
+    if (_riesgo == null) {
+      _mostrarMensaje(
+        'Indica si existe algún riesgo.',
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  // ============================================================
+  // VALIDAR EVIDENCIA
+  // ============================================================
+
+  bool _validarEvidencia() {
+    // Para que el reporte tenga evidencia, solicitamos al menos
+    // una fotografía, video o audio.
+    if (!_tieneFoto && !_tieneVideo && !_tieneAudio) {
+      _mostrarMensaje(
+        'Agrega al menos una evidencia: foto, video o audio.',
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  // ============================================================
+  // MENSAJE TEMPORAL
+  // ============================================================
+
+  void _mostrarMensaje(String mensaje) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ============================================================
+  // AGREGAR FOTOGRAFÍA
+  // ============================================================
+
+  void _agregarFoto() {
+    // ----------------------------------------------------------
+    // TEMPORAL
+    // ----------------------------------------------------------
+    //
+    // Aquí posteriormente conectaremos:
+    //
+    // ImagePicker / cámara del dispositivo.
+    //
+    // Por ahora solamente simulamos que se agregó una foto.
+    // ----------------------------------------------------------
+
+    setState(() {
+      _tieneFoto = true;
+    });
+
+    _mostrarMensaje(
+      'Fotografía agregada correctamente.',
+    );
+  }
+
+  // ============================================================
+  // AGREGAR VIDEO
+  // ============================================================
+
+  void _agregarVideo() {
+    // ----------------------------------------------------------
+    // TEMPORAL
+    // ----------------------------------------------------------
+    //
+    // Aquí posteriormente conectaremos la cámara para grabar
+    // o seleccionar un video.
+    // ----------------------------------------------------------
+
+    setState(() {
+      _tieneVideo = true;
+    });
+
+    _mostrarMensaje(
+      'Video agregado correctamente.',
+    );
+  }
+
+  // ============================================================
+  // AGREGAR AUDIO
+  // ============================================================
+
+  void _agregarAudio() {
+    // ----------------------------------------------------------
+    // TEMPORAL
+    // ----------------------------------------------------------
+    //
+    // Aquí posteriormente conectaremos una grabadora de audio.
+    // ----------------------------------------------------------
+
+    setState(() {
+      _tieneAudio = true;
+    });
+
+    _mostrarMensaje(
+      'Audio agregado correctamente.',
+    );
+  }
+
+  // ============================================================
+  // CONFIRMAR UBICACIÓN
+  // ============================================================
+
+  void _cambiarUbicacion(LatLng? nuevaUbicacion) {
+    setState(() {
+      _coordenadasConfirmadas = nuevaUbicacion;
+      _ubicacionConfirmada = nuevaUbicacion != null;
+    });
+    if (nuevaUbicacion != null) {
+      _mostrarMensaje('Ubicacion confirmada correctamente.');
+    }
+  }
+
+  // ============================================================
+  // ENVIAR REPORTE
+  // ============================================================
+
+  void _enviarReporte() {
+    // ----------------------------------------------------------
+    // TEMPORAL
+    // ----------------------------------------------------------
+    //
+    // El folio definitivo deberá generarse en el servidor.
+    //
+    // Por ahora utilizamos un folio de demostración para poder
+    // visualizar cómo funcionará la pantalla.
+    // ----------------------------------------------------------
+
+    const String folio = 'INC-2026-000001';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.check_circle,
+            color: Color(0xFF2E7D32),
+            size: 60,
+          ),
+
+          title: const Text(
+            'Reporte enviado',
+            textAlign: TextAlign.center,
+          ),
+
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+
+              const Text(
+                'Tu reporte de incendio fue registrado '
+                'correctamente.',
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 20),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Folio del reporte',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                      ),
+                    ),
+
+                    const SizedBox(height: 5),
+
+                    Text(
+                      folio,
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF145A32),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              const Text(
+                'Guarda este número para consultar '
+                'el seguimiento de tu reporte.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.black54,
+                ),
+              ),
+            ],
+          ),
+
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+
+                  // Regresamos al inicio.
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF145A32),
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text(
+                  'Volver al inicio',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // CONSTRUCCIÓN PRINCIPAL
+  // ============================================================
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+
+      // ==========================================================
+      // APP BAR
+      // ==========================================================
+
+      appBar: AppBar(
+        title: const Text(
+          'Reporte de incendio',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        backgroundColor: const Color(0xFF145A32),
+        foregroundColor: Colors.white,
+
+        // No mostramos botón de regreso en el último paso.
+        automaticallyImplyLeading: _currentStep < 3,
+      ),
+
+      // ==========================================================
+      // CONTENIDO
+      // ==========================================================
+
+      body: Column(
+        children: [
+
+          // ------------------------------------------------------
+          // INDICADOR DE PROGRESO
+          // ------------------------------------------------------
+
+          _buildProgressIndicator(),
+
+          // ------------------------------------------------------
+          // PÁGINAS
+          // ------------------------------------------------------
+
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+
+              physics: const NeverScrollableScrollPhysics(),
+
+              children: [
+                _buildInformacionPaso(),
+                _buildEvidenciaPaso(),
+                _buildUbicacionPaso(),
+                _buildConfirmacionPaso(),
+              ],
+            ),
+          ),
+
+          // ------------------------------------------------------
+          // BOTONES INFERIORES
+          // ------------------------------------------------------
+
+          if (_currentStep < 3)
+            _buildNavigationButtons(),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // INDICADOR DE PROGRESO
+  // ============================================================
+
+  Widget _buildProgressIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 15,
+      ),
+      color: Colors.white,
+      child: Row(
+        children: [
+
+          _progressItem(
+            number: '1',
+            title: 'Información',
+            active: _currentStep >= 0,
+          ),
+
+          _progressLine(),
+
+          _progressItem(
+            number: '2',
+            title: 'Evidencia',
+            active: _currentStep >= 1,
+          ),
+
+          _progressLine(),
+
+          _progressItem(
+            number: '3',
+            title: 'Ubicación',
+            active: _currentStep >= 2,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // ELEMENTO DEL PROGRESO
+  // ============================================================
+
+  Widget _progressItem({
+    required String number,
+    required String title,
+    required bool active,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: active
+                ? const Color(0xFF145A32)
+                : Colors.grey.shade300,
+            child: Text(
+              number,
+              style: TextStyle(
+                color: active
+                    ? Colors.white
+                    : Colors.black54,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 5),
+
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: active
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+              color: active
+                  ? const Color(0xFF145A32)
+                  : Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // LÍNEA DEL INDICADOR
+  // ============================================================
+
+  Widget _progressLine() {
+    return Container(
+      width: 20,
+      height: 2,
+      color: Colors.grey.shade300,
+    );
+  }
+
+  // ============================================================
+  // PASO 1: INFORMACIÓN
+  // ============================================================
+
+  Widget _buildInformacionPaso() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          const Icon(
+            Icons.local_fire_department,
+            size: 50,
+            color: Color(0xFFD84315),
+          ),
+
+          const SizedBox(height: 10),
+
+          const Text(
+            'Información del incendio',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF145A32),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text(
+            'Selecciona las opciones que describan '
+            'mejor la situación.',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.black54,
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // TIPO DE INCENDIO
+          // ------------------------------------------------------
+
+          _questionTitle(
+            '¿Qué tipo de incendio observas?',
+            required: true,
+          ),
+
+          const SizedBox(height: 10),
+
+          _selectionCard(
+            title: 'Pastizal',
+            icon: Icons.grass,
+            selected: _tipoIncendio == 'Pastizal',
+            onTap: () {
+              setState(() {
+                _tipoIncendio = 'Pastizal';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Forestal',
+            icon: Icons.forest,
+            selected: _tipoIncendio == 'Forestal',
+            onTap: () {
+              setState(() {
+                _tipoIncendio = 'Forestal';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Basura',
+            icon: Icons.delete_outline,
+            selected: _tipoIncendio == 'Basura',
+            onTap: () {
+              setState(() {
+                _tipoIncendio = 'Basura';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Otro',
+            icon: Icons.help_outline,
+            selected: _tipoIncendio == 'Otro',
+            onTap: () {
+              setState(() {
+                _tipoIncendio = 'Otro';
+              });
+            },
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // ESTADO
+          // ------------------------------------------------------
+
+          _questionTitle(
+            '¿El incendio está activo actualmente?',
+            required: true,
+          ),
+
+          const SizedBox(height: 10),
+
+          _selectionCard(
+            title: 'Sí',
+            icon: Icons.local_fire_department,
+            selected: _estadoIncendio == 'Sí',
+            onTap: () {
+              setState(() {
+                _estadoIncendio = 'Sí';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'No',
+            icon: Icons.check_circle_outline,
+            selected: _estadoIncendio == 'No',
+            onTap: () {
+              setState(() {
+                _estadoIncendio = 'No';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'No estoy seguro',
+            icon: Icons.help_outline,
+            selected: _estadoIncendio == 'No estoy seguro',
+            onTap: () {
+              setState(() {
+                _estadoIncendio = 'No estoy seguro';
+              });
+            },
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // QUÉ OBSERVA
+          // ------------------------------------------------------
+
+          _questionTitle(
+            '¿Qué observas?',
+            required: true,
+          ),
+
+          const SizedBox(height: 10),
+
+          _selectionCard(
+            title: 'Humo',
+            icon: Icons.cloud,
+            selected: _queObserva == 'Humo',
+            onTap: () {
+              setState(() {
+                _queObserva = 'Humo';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Fuego visible',
+            icon: Icons.local_fire_department,
+            selected: _queObserva == 'Fuego visible',
+            onTap: () {
+              setState(() {
+                _queObserva = 'Fuego visible';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Humo y fuego',
+            icon: Icons.warning_amber,
+            selected: _queObserva == 'Humo y fuego',
+            onTap: () {
+              setState(() {
+                _queObserva = 'Humo y fuego';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Solo indicios',
+            icon: Icons.visibility_outlined,
+            selected: _queObserva == 'Solo indicios',
+            onTap: () {
+              setState(() {
+                _queObserva = 'Solo indicios';
+              });
+            },
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // RIESGO
+          // ------------------------------------------------------
+
+          _questionTitle(
+            '¿Hay personas, viviendas o vehículos en riesgo?',
+            required: true,
+          ),
+
+          const SizedBox(height: 10),
+
+          _selectionCard(
+            title: 'Sí',
+            icon: Icons.warning_amber,
+            selected: _riesgo == 'Sí',
+            onTap: () {
+              setState(() {
+                _riesgo = 'Sí';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'No',
+            icon: Icons.check_circle_outline,
+            selected: _riesgo == 'No',
+            onTap: () {
+              setState(() {
+                _riesgo = 'No';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'No estoy seguro',
+            icon: Icons.help_outline,
+            selected: _riesgo == 'No estoy seguro',
+            onTap: () {
+              setState(() {
+                _riesgo = 'No estoy seguro';
+              });
+            },
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // DESCRIPCIÓN
+          // ------------------------------------------------------
+
+          _questionTitle(
+            'Descripción adicional',
+            required: false,
+          ),
+
+          const SizedBox(height: 10),
+
+          TextField(
+            controller: _descripcionController,
+            maxLines: 4,
+            maxLength: 500,
+            decoration: InputDecoration(
+              hintText:
+                  'Describe cualquier detalle que consideres importante...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // PASO 2: EVIDENCIA
+  // ============================================================
+
+  Widget _buildEvidenciaPaso() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+
+          const Icon(
+            Icons.perm_media_outlined,
+            size: 55,
+            color: Color(0xFF145A32),
+          ),
+
+          const SizedBox(height: 10),
+
+          const Text(
+            'Evidencia',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF145A32),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text(
+            'Agrega fotografías, videos o audio que puedan '
+            'ayudar a documentar el reporte.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.black54,
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          // ------------------------------------------------------
+          // FOTOGRAFÍA
+          // ------------------------------------------------------
+
+          _evidenceButton(
+            icon: Icons.camera_alt,
+            title: 'Fotografía',
+            subtitle: _tieneFoto
+                ? 'Fotografía agregada ✓'
+                : 'Tomar o seleccionar fotografía',
+            color: const Color(0xFF1565C0),
+            added: _tieneFoto,
+            onTap: _agregarFoto,
+          ),
+
+          const SizedBox(height: 15),
+
+          // ------------------------------------------------------
+          // VIDEO
+          // ------------------------------------------------------
+
+          _evidenceButton(
+            icon: Icons.videocam,
+            title: 'Video',
+            subtitle: _tieneVideo
+                ? 'Video agregado ✓'
+                : 'Grabar o seleccionar video',
+            color: const Color(0xFF6A1B9A),
+            added: _tieneVideo,
+            onTap: _agregarVideo,
+          ),
+
+          const SizedBox(height: 15),
+
+          // ------------------------------------------------------
+          // AUDIO
+          // ------------------------------------------------------
+
+          _evidenceButton(
+            icon: Icons.mic,
+            title: 'Audio',
+            subtitle: _tieneAudio
+                ? 'Audio agregado ✓'
+                : 'Grabar un audio',
+            color: const Color(0xFFEF6C00),
+            added: _tieneAudio,
+            onTap: _agregarAudio,
+          ),
+
+          const SizedBox(height: 30),
+
+          // ------------------------------------------------------
+          // AVISO
+          // ------------------------------------------------------
+
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                Icon(
+                  Icons.info_outline,
+                  color: Color(0xFFF57F17),
+                ),
+
+                SizedBox(width: 12),
+
+                Expanded(
+                  child: Text(
+                    'Agrega al menos una evidencia. No es necesario '
+                    'agregar los tres tipos.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF6D4C00),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // PASO 3: UBICACIÓN
+  // ============================================================
+
+  Widget _buildUbicacionPaso() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.location_on,
+            size: 55,
+            color: Color(0xFFD32F2F),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Ubicacion del reporte',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF145A32),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Confirma en el mapa el lugar donde se encuentra el incendio.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, color: Colors.black54),
+          ),
+          const SizedBox(height: 25),
+          ReportLocationPicker(
+            initialConfirmedLocation: _coordenadasConfirmadas,
+            isConfirmed: _ubicacionConfirmada,
+            onLocationChanged: _cambiarUbicacion,
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // PASO 4: CONFIRMACIÓN
+  // ============================================================
+
+  Widget _buildConfirmacionPaso() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+
+          const SizedBox(height: 20),
+
+          const Icon(
+            Icons.fact_check_outlined,
+            size: 70,
+            color: Color(0xFF145A32),
+          ),
+
+          const SizedBox(height: 15),
+
+          const Text(
+            'Revisa tu reporte',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF145A32),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text(
+            'Verifica que la información sea correcta '
+            'antes de enviarla.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.black54,
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // INFORMACIÓN
+          // ------------------------------------------------------
+
+          _summaryCard(
+            title: 'Información del incendio',
+            icon: Icons.local_fire_department,
+            children: [
+              _summaryRow(
+                'Tipo',
+                _tipoIncendio ?? 'No especificado',
+              ),
+              _summaryRow(
+                'Estado',
+                _estadoIncendio ?? 'No especificado',
+              ),
+              _summaryRow(
+                'Observación',
+                _queObserva ?? 'No especificado',
+              ),
+              _summaryRow(
+                'Riesgo',
+                _riesgo ?? 'No especificado',
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 15),
+
+          // ------------------------------------------------------
+          // DESCRIPCIÓN
+          // ------------------------------------------------------
+
+          _summaryCard(
+            title: 'Descripción',
+            icon: Icons.description_outlined,
+            children: [
+              _summaryRow(
+                'Comentario',
+                _descripcionController.text.isEmpty
+                    ? 'Sin descripción adicional'
+                    : _descripcionController.text,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 15),
+
+          // ------------------------------------------------------
+          // EVIDENCIAS
+          // ------------------------------------------------------
+
+          _summaryCard(
+            title: 'Evidencia',
+            icon: Icons.perm_media_outlined,
+            children: [
+
+              if (_tieneFoto)
+                _summaryRow(
+                  'Fotografía',
+                  'Agregada ✓',
+                ),
+
+              if (_tieneVideo)
+                _summaryRow(
+                  'Video',
+                  'Agregado ✓',
+                ),
+
+              if (_tieneAudio)
+                _summaryRow(
+                  'Audio',
+                  'Agregado ✓',
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 15),
+
+          // ------------------------------------------------------
+          // UBICACIÓN
+          // ------------------------------------------------------
+
+          _summaryCard(
+            title: 'Ubicación',
+            icon: Icons.location_on,
+            children: [
+              _summaryRow(
+                'Estado',
+                _ubicacionConfirmada
+                    ? 'Ubicación confirmada ✓'
+                    : 'Pendiente',
+              ),
+              if (_coordenadasConfirmadas != null) ...[
+                _summaryRow('Latitud',
+                    _coordenadasConfirmadas!.latitude.toStringAsFixed(6)),
+                _summaryRow('Longitud',
+                    _coordenadasConfirmadas!.longitude.toStringAsFixed(6)),
+              ],
+            ],
+          ),
+
+          const SizedBox(height: 30),
+
+          // ------------------------------------------------------
+          // BOTÓN ENVIAR
+          // ------------------------------------------------------
+
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _enviarReporte,
+              icon: const Icon(Icons.send),
+              label: const Text(
+                'Enviar reporte',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF145A32),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 17,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 15),
+
+          const Text(
+            'Al enviar el reporte se generará un folio único.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // TÍTULO DE PREGUNTA
+  // ============================================================
+
+  Widget _questionTitle(
+    String title, {
+    required bool required,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+
+        if (required)
+          const Text(
+            '*',
+            style: TextStyle(
+              color: Colors.red,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // TARJETA DE SELECCIÓN
+  // ============================================================
+
+  Widget _selectionCard({
+    required String title,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          decoration: BoxDecoration(
+            color: selected
+                ? const Color(0xFFE8F5E9)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF145A32)
+                  : Colors.grey.shade300,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+
+              Icon(
+                icon,
+                color: selected
+                    ? const Color(0xFF145A32)
+                    : Colors.grey.shade700,
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: selected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
+              ),
+
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: selected
+                    ? const Color(0xFF145A32)
+                    : Colors.grey,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // BOTÓN DE EVIDENCIA
+  // ============================================================
+
+  Widget _evidenceButton({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required bool added,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: added
+              ? const Color(0xFFE8F5E9)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: added
+                ? const Color(0xFF2E7D32)
+                : Colors.grey.shade300,
+            width: added ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+
+            Container(
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                added ? Icons.check : icon,
+                color: added
+                    ? const Color(0xFF2E7D32)
+                    : color,
+                size: 28,
+              ),
+            ),
+
+            const SizedBox(width: 15),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const Icon(
+              Icons.add_circle_outline,
+              color: Color(0xFF145A32),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // TARJETA DE RESUMEN
+  // ============================================================
+
+  Widget _summaryCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: Colors.grey.shade300,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          Row(
+            children: [
+
+              Icon(
+                icon,
+                color: const Color(0xFF145A32),
+              ),
+
+              const SizedBox(width: 10),
+
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+
+          const Divider(
+            height: 25,
+          ),
+
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // FILA DEL RESUMEN
+  // ============================================================
+
+  Widget _summaryRow(
+    String title,
+    String value,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          SizedBox(
+            width: 95,
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+              ),
+            ),
+          ),
+
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // BOTONES INFERIORES
+  // ============================================================
+
+  Widget _buildNavigationButtons() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        20,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+
+          // ------------------------------------------------------
+          // BOTÓN ATRÁS
+          // ------------------------------------------------------
+
+          if (_currentStep > 0)
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _pasoAnterior,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF145A32),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 15,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  'Atrás',
+                ),
+              ),
+            ),
+
+          if (_currentStep > 0)
+            const SizedBox(width: 12),
+
+          // ------------------------------------------------------
+          // BOTÓN CONTINUAR
+          // ------------------------------------------------------
+
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _siguientePaso,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF145A32),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 15,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Text(
+                _currentStep == 2
+                    ? 'Revisar reporte'
+                    : 'Continuar',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+----------------------------------------------------------------------------
+//illegal_logging_report_screen
+import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
+
+import '../widgets/report_location_picker.dart';
+
+class IllegalLoggingReportScreen extends StatefulWidget {
+  const IllegalLoggingReportScreen({super.key});
+
+  @override
+  State<IllegalLoggingReportScreen> createState() =>
+      _IllegalLoggingReportScreenState();
+}
+
+class _IllegalLoggingReportScreenState
+    extends State<IllegalLoggingReportScreen> {
+  // ============================================================
+  // PASOS DEL REPORTE
+  // ============================================================
+  //
+  // 0 = Información
+  // 1 = Evidencia
+  // 2 = Ubicación
+  // 3 = Confirmación
+  // ============================================================
+
+  int _currentStep = 0;
+
+  // ============================================================
+  // RESPUESTAS DEL CUESTIONARIO
+  // ============================================================
+
+  String? _actividadObservada;
+  String? _actividadActual;
+  String? _vehiculosMaquinaria;
+  String? _cantidadArboles;
+
+  final TextEditingController _descripcionController =
+      TextEditingController();
+
+  // ============================================================
+  // EVIDENCIAS
+  // ============================================================
+
+  bool _tieneFoto = false;
+  bool _tieneVideo = false;
+  bool _tieneAudio = false;
+
+  // ============================================================
+  // UBICACIÓN
+  // ============================================================
+
+  bool _ubicacionConfirmada = false;
+  LatLng? _coordenadasConfirmadas;
+
+  // ============================================================
+  // CONTROLADOR DE PÁGINAS
+  // ============================================================
+
+  final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _descripcionController.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // ============================================================
+  // AVANZAR
+  // ============================================================
+
+  void _siguientePaso() {
+    if (_currentStep == 0) {
+      if (!_validarInformacion()) {
+        return;
+      }
+    }
+
+    if (_currentStep == 1) {
+      if (!_validarEvidencia()) {
+        return;
+      }
+    }
+
+    if (_currentStep == 2) {
+      if (!_ubicacionConfirmada) {
+        _mostrarMensaje(
+          'Confirma la ubicación del reporte para continuar.',
+        );
+        return;
+      }
+    }
+
+    if (_currentStep < 3) {
+      setState(() {
+        _currentStep++;
+      });
+
+      _pageController.animateToPage(
+        _currentStep,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  // ============================================================
+  // REGRESAR
+  // ============================================================
+
+  void _pasoAnterior() {
+    if (_currentStep > 0) {
+      setState(() {
+        _currentStep--;
+      });
+
+      _pageController.animateToPage(
+        _currentStep,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  // ============================================================
+  // VALIDAR INFORMACIÓN
+  // ============================================================
+
+  bool _validarInformacion() {
+    if (_actividadObservada == null) {
+      _mostrarMensaje(
+        'Selecciona qué actividad observas.',
+      );
+      return false;
+    }
+
+    if (_actividadActual == null) {
+      _mostrarMensaje(
+        'Indica si la actividad está ocurriendo actualmente.',
+      );
+      return false;
+    }
+
+    if (_vehiculosMaquinaria == null) {
+      _mostrarMensaje(
+        'Indica si observas vehículos o maquinaria.',
+      );
+      return false;
+    }
+
+    if (_cantidadArboles == null) {
+      _mostrarMensaje(
+        'Selecciona una cantidad aproximada de árboles.',
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  // ============================================================
+  // VALIDAR EVIDENCIA
+  // ============================================================
+
+  bool _validarEvidencia() {
+    if (!_tieneFoto && !_tieneVideo && !_tieneAudio) {
+      _mostrarMensaje(
+        'Agrega al menos una evidencia: foto, video o audio.',
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  // ============================================================
+  // MOSTRAR MENSAJE
+  // ============================================================
+
+  void _mostrarMensaje(String mensaje) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensaje),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ============================================================
+  // FOTOGRAFÍA
+  // ============================================================
+
+  void _agregarFoto() {
+    // ----------------------------------------------------------
+    // TEMPORAL
+    // ----------------------------------------------------------
+    // Más adelante conectaremos la cámara o galería real.
+    // ----------------------------------------------------------
+
+    setState(() {
+      _tieneFoto = true;
+    });
+
+    _mostrarMensaje(
+      'Fotografía agregada correctamente.',
+    );
+  }
+
+  // ============================================================
+  // VIDEO
+  // ============================================================
+
+  void _agregarVideo() {
+    // ----------------------------------------------------------
+    // TEMPORAL
+    // ----------------------------------------------------------
+    // Más adelante conectaremos la grabación de video real.
+    // ----------------------------------------------------------
+
+    setState(() {
+      _tieneVideo = true;
+    });
+
+    _mostrarMensaje(
+      'Video agregado correctamente.',
+    );
+  }
+
+  // ============================================================
+  // AUDIO
+  // ============================================================
+
+  void _agregarAudio() {
+    // ----------------------------------------------------------
+    // TEMPORAL
+    // ----------------------------------------------------------
+    // Más adelante conectaremos una grabadora de audio real.
+    // ----------------------------------------------------------
+
+    setState(() {
+      _tieneAudio = true;
+    });
+
+    _mostrarMensaje(
+      'Audio agregado correctamente.',
+    );
+  }
+
+  // ============================================================
+  // CONFIRMAR UBICACIÓN
+  // ============================================================
+
+  void _cambiarUbicacion(LatLng? nuevaUbicacion) {
+    setState(() {
+      _coordenadasConfirmadas = nuevaUbicacion;
+      _ubicacionConfirmada = nuevaUbicacion != null;
+    });
+    if (nuevaUbicacion != null) {
+      _mostrarMensaje('Ubicacion confirmada correctamente.');
+    }
+  }
+
+  // ============================================================
+  // ENVIAR REPORTE
+  // ============================================================
+
+  void _enviarReporte() {
+    // ----------------------------------------------------------
+    // TEMPORAL
+    // ----------------------------------------------------------
+    //
+    // El folio real deberá generarse en el servidor.
+    //
+    // Para esta simulación utilizamos un folio con el prefijo
+    // TAL para diferenciarlo de los reportes de incendios.
+    // ----------------------------------------------------------
+
+    const String folio = 'TAL-2026-000001';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          icon: const Icon(
+            Icons.check_circle,
+            color: Color(0xFF2E7D32),
+            size: 60,
+          ),
+
+          title: const Text(
+            'Reporte enviado',
+            textAlign: TextAlign.center,
+          ),
+
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Tu reporte de tala ilegal fue registrado '
+                'correctamente.',
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 20),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Folio del reporte',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                      ),
+                    ),
+
+                    const SizedBox(height: 5),
+
+                    Text(
+                      folio,
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF145A32),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              const Text(
+                'Guarda este número para consultar '
+                'el seguimiento de tu reporte.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.black54,
+                ),
+              ),
+            ],
+          ),
+
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF145A32),
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text(
+                  'Volver al inicio',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // CONSTRUCCIÓN PRINCIPAL
+  // ============================================================
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Reporte de tala ilegal',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFF145A32),
+        foregroundColor: Colors.white,
+        automaticallyImplyLeading: _currentStep < 3,
+      ),
+
+      body: Column(
+        children: [
+          _buildProgressIndicator(),
+
+          Expanded(
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildInformacionPaso(),
+                _buildEvidenciaPaso(),
+                _buildUbicacionPaso(),
+                _buildConfirmacionPaso(),
+              ],
+            ),
+          ),
+
+          if (_currentStep < 3)
+            _buildNavigationButtons(),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // INDICADOR DE PROGRESO
+  // ============================================================
+
+  Widget _buildProgressIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 15,
+      ),
+      color: Colors.white,
+      child: Row(
+        children: [
+          _progressItem(
+            number: '1',
+            title: 'Información',
+            active: _currentStep >= 0,
+          ),
+
+          _progressLine(),
+
+          _progressItem(
+            number: '2',
+            title: 'Evidencia',
+            active: _currentStep >= 1,
+          ),
+
+          _progressLine(),
+
+          _progressItem(
+            number: '3',
+            title: 'Ubicación',
+            active: _currentStep >= 2,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // ELEMENTO DE PROGRESO
+  // ============================================================
+
+  Widget _progressItem({
+    required String number,
+    required String title,
+    required bool active,
+  }) {
+    return Expanded(
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 17,
+            backgroundColor: active
+                ? const Color(0xFF145A32)
+                : Colors.grey.shade300,
+            child: Text(
+              number,
+              style: TextStyle(
+                color: active
+                    ? Colors.white
+                    : Colors.black54,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 5),
+
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: active
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+              color: active
+                  ? const Color(0xFF145A32)
+                  : Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // LÍNEA DEL PROGRESO
+  // ============================================================
+
+  Widget _progressLine() {
+    return Container(
+      width: 20,
+      height: 2,
+      color: Colors.grey.shade300,
+    );
+  }
+
+  // ============================================================
+  // PASO 1: INFORMACIÓN
+  // ============================================================
+
+  Widget _buildInformacionPaso() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.forest,
+            size: 50,
+            color: Color(0xFF2E7D32),
+          ),
+
+          const SizedBox(height: 10),
+
+          const Text(
+            'Información de la situación',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF145A32),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text(
+            'Selecciona las opciones que describan '
+            'mejor lo que estás observando.',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.black54,
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // ACTIVIDAD OBSERVADA
+          // ------------------------------------------------------
+
+          _questionTitle(
+            '¿Qué actividad observas?',
+            required: true,
+          ),
+
+          const SizedBox(height: 10),
+
+          _selectionCard(
+            title: 'Corte de árboles',
+            icon: Icons.content_cut,
+            selected: _actividadObservada ==
+                'Corte de árboles',
+            onTap: () {
+              setState(() {
+                _actividadObservada =
+                    'Corte de árboles';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Transporte de madera',
+            icon: Icons.local_shipping_outlined,
+            selected: _actividadObservada ==
+                'Transporte de madera',
+            onTap: () {
+              setState(() {
+                _actividadObservada =
+                    'Transporte de madera';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Acumulación de madera',
+            icon: Icons.view_module_outlined,
+            selected: _actividadObservada ==
+                'Acumulación de madera',
+            onTap: () {
+              setState(() {
+                _actividadObservada =
+                    'Acumulación de madera';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Árboles recientemente cortados',
+            icon: Icons.forest_outlined,
+            selected: _actividadObservada ==
+                'Árboles recientemente cortados',
+            onTap: () {
+              setState(() {
+                _actividadObservada =
+                    'Árboles recientemente cortados';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Otra actividad',
+            icon: Icons.help_outline,
+            selected: _actividadObservada ==
+                'Otra actividad',
+            onTap: () {
+              setState(() {
+                _actividadObservada =
+                    'Otra actividad';
+              });
+            },
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // ACTIVIDAD ACTUAL
+          // ------------------------------------------------------
+
+          _questionTitle(
+            '¿La actividad está ocurriendo actualmente?',
+            required: true,
+          ),
+
+          const SizedBox(height: 10),
+
+          _selectionCard(
+            title: 'Sí',
+            icon: Icons.visibility,
+            selected: _actividadActual == 'Sí',
+            onTap: () {
+              setState(() {
+                _actividadActual = 'Sí';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'No',
+            icon: Icons.check_circle_outline,
+            selected: _actividadActual == 'No',
+            onTap: () {
+              setState(() {
+                _actividadActual = 'No';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'No estoy seguro',
+            icon: Icons.help_outline,
+            selected: _actividadActual ==
+                'No estoy seguro',
+            onTap: () {
+              setState(() {
+                _actividadActual =
+                    'No estoy seguro';
+              });
+            },
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // VEHÍCULOS O MAQUINARIA
+          // ------------------------------------------------------
+
+          _questionTitle(
+            '¿Observas vehículos o maquinaria relacionados?',
+            required: true,
+          ),
+
+          const SizedBox(height: 10),
+
+          _selectionCard(
+            title: 'Sí',
+            icon: Icons.construction,
+            selected: _vehiculosMaquinaria == 'Sí',
+            onTap: () {
+              setState(() {
+                _vehiculosMaquinaria = 'Sí';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'No',
+            icon: Icons.check_circle_outline,
+            selected: _vehiculosMaquinaria == 'No',
+            onTap: () {
+              setState(() {
+                _vehiculosMaquinaria = 'No';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'No estoy seguro',
+            icon: Icons.help_outline,
+            selected:
+                _vehiculosMaquinaria ==
+                    'No estoy seguro',
+            onTap: () {
+              setState(() {
+                _vehiculosMaquinaria =
+                    'No estoy seguro';
+              });
+            },
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // CANTIDAD DE ÁRBOLES
+          // ------------------------------------------------------
+
+          _questionTitle(
+            '¿Cuántos árboles aproximadamente están afectados?',
+            required: true,
+          ),
+
+          const SizedBox(height: 10),
+
+          _selectionCard(
+            title: '1 - 5',
+            icon: Icons.filter_1,
+            selected: _cantidadArboles == '1 - 5',
+            onTap: () {
+              setState(() {
+                _cantidadArboles = '1 - 5';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: '6 - 10',
+            icon: Icons.filter_6,
+            selected: _cantidadArboles == '6 - 10',
+            onTap: () {
+              setState(() {
+                _cantidadArboles = '6 - 10';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'Más de 10',
+            icon: Icons.add_circle_outline,
+            selected:
+                _cantidadArboles == 'Más de 10',
+            onTap: () {
+              setState(() {
+                _cantidadArboles = 'Más de 10';
+              });
+            },
+          ),
+
+          _selectionCard(
+            title: 'No sé',
+            icon: Icons.help_outline,
+            selected: _cantidadArboles == 'No sé',
+            onTap: () {
+              setState(() {
+                _cantidadArboles = 'No sé';
+              });
+            },
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // DESCRIPCIÓN
+          // ------------------------------------------------------
+
+          _questionTitle(
+            'Descripción adicional',
+            required: false,
+          ),
+
+          const SizedBox(height: 10),
+
+          TextField(
+            controller: _descripcionController,
+            maxLines: 4,
+            maxLength: 500,
+            decoration: InputDecoration(
+              hintText:
+                  'Describe cualquier detalle que consideres importante...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // PASO 2: EVIDENCIA
+  // ============================================================
+
+  Widget _buildEvidenciaPaso() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.perm_media_outlined,
+            size: 55,
+            color: Color(0xFF145A32),
+          ),
+
+          const SizedBox(height: 10),
+
+          const Text(
+            'Evidencia',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF145A32),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text(
+            'Agrega fotografías, videos o audio que puedan '
+            'ayudar a documentar el reporte.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.black54,
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          // FOTO
+
+          _evidenceButton(
+            icon: Icons.camera_alt,
+            title: 'Fotografía',
+            subtitle: _tieneFoto
+                ? 'Fotografía agregada ✓'
+                : 'Tomar o seleccionar fotografía',
+            color: const Color(0xFF1565C0),
+            added: _tieneFoto,
+            onTap: _agregarFoto,
+          ),
+
+          const SizedBox(height: 15),
+
+          // VIDEO
+
+          _evidenceButton(
+            icon: Icons.videocam,
+            title: 'Video',
+            subtitle: _tieneVideo
+                ? 'Video agregado ✓'
+                : 'Grabar o seleccionar video',
+            color: const Color(0xFF6A1B9A),
+            added: _tieneVideo,
+            onTap: _agregarVideo,
+          ),
+
+          const SizedBox(height: 15),
+
+          // AUDIO
+
+          _evidenceButton(
+            icon: Icons.mic,
+            title: 'Audio',
+            subtitle: _tieneAudio
+                ? 'Audio agregado ✓'
+                : 'Grabar un audio',
+            color: const Color(0xFFEF6C00),
+            added: _tieneAudio,
+            onTap: _agregarAudio,
+          ),
+
+          const SizedBox(height: 30),
+
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Row(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Color(0xFFF57F17),
+                ),
+
+                SizedBox(width: 12),
+
+                Expanded(
+                  child: Text(
+                    'Agrega al menos una evidencia. '
+                    'No es necesario agregar los tres tipos.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF6D4C00),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // PASO 3: UBICACIÓN
+  // ============================================================
+
+  Widget _buildUbicacionPaso() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.location_on,
+            size: 55,
+            color: Color(0xFFD32F2F),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Ubicacion del reporte',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF145A32),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Confirma en el mapa el lugar donde se observo la actividad.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, color: Colors.black54),
+          ),
+          const SizedBox(height: 25),
+          ReportLocationPicker(
+            initialConfirmedLocation: _coordenadasConfirmadas,
+            isConfirmed: _ubicacionConfirmada,
+            onLocationChanged: _cambiarUbicacion,
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // PASO 4: CONFIRMACIÓN
+  // ============================================================
+
+  Widget _buildConfirmacionPaso() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+
+          const Icon(
+            Icons.fact_check_outlined,
+            size: 70,
+            color: Color(0xFF145A32),
+          ),
+
+          const SizedBox(height: 15),
+
+          const Text(
+            'Revisa tu reporte',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF145A32),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text(
+            'Verifica que la información sea correcta '
+            'antes de enviarla.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.black54,
+            ),
+          ),
+
+          const SizedBox(height: 25),
+
+          // ------------------------------------------------------
+          // INFORMACIÓN
+          // ------------------------------------------------------
+
+          _summaryCard(
+            title: 'Información de la situación',
+            icon: Icons.forest,
+            children: [
+              _summaryRow(
+                'Actividad',
+                _actividadObservada ??
+                    'No especificada',
+              ),
+              _summaryRow(
+                'Actualmente',
+                _actividadActual ??
+                    'No especificado',
+              ),
+              _summaryRow(
+                'Vehículos',
+                _vehiculosMaquinaria ??
+                    'No especificado',
+              ),
+              _summaryRow(
+                'Árboles',
+                _cantidadArboles ??
+                    'No especificado',
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 15),
+
+          // ------------------------------------------------------
+          // DESCRIPCIÓN
+          // ------------------------------------------------------
+
+          _summaryCard(
+            title: 'Descripción',
+            icon: Icons.description_outlined,
+            children: [
+              _summaryRow(
+                'Comentario',
+                _descripcionController.text.isEmpty
+                    ? 'Sin descripción adicional'
+                    : _descripcionController.text,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 15),
+
+          // ------------------------------------------------------
+          // EVIDENCIA
+          // ------------------------------------------------------
+
+          _summaryCard(
+            title: 'Evidencia',
+            icon: Icons.perm_media_outlined,
+            children: [
+              if (_tieneFoto)
+                _summaryRow(
+                  'Fotografía',
+                  'Agregada ✓',
+                ),
+
+              if (_tieneVideo)
+                _summaryRow(
+                  'Video',
+                  'Agregado ✓',
+                ),
+
+              if (_tieneAudio)
+                _summaryRow(
+                  'Audio',
+                  'Agregado ✓',
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 15),
+
+          // ------------------------------------------------------
+          // UBICACIÓN
+          // ------------------------------------------------------
+
+          _summaryCard(
+            title: 'Ubicación',
+            icon: Icons.location_on,
+            children: [
+              _summaryRow(
+                'Estado',
+                _ubicacionConfirmada
+                    ? 'Ubicación confirmada ✓'
+                    : 'Pendiente',
+              ),
+              if (_coordenadasConfirmadas != null) ...[
+                _summaryRow('Latitud',
+                    _coordenadasConfirmadas!.latitude.toStringAsFixed(6)),
+                _summaryRow('Longitud',
+                    _coordenadasConfirmadas!.longitude.toStringAsFixed(6)),
+              ],
+            ],
+          ),
+
+          const SizedBox(height: 30),
+
+          // ------------------------------------------------------
+          // ENVIAR
+          // ------------------------------------------------------
+
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _enviarReporte,
+              icon: const Icon(Icons.send),
+              label: const Text(
+                'Enviar reporte',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    const Color(0xFF145A32),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 17,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 15),
+
+          const Text(
+            'Al enviar el reporte se generará un folio único.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // TÍTULO DE PREGUNTA
+  // ============================================================
+
+  Widget _questionTitle(
+    String title, {
+    required bool required,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+
+        if (required)
+          const Text(
+            '*',
+            style: TextStyle(
+              color: Colors.red,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // TARJETA DE SELECCIÓN
+  // ============================================================
+
+  Widget _selectionCard({
+    required String title,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          decoration: BoxDecoration(
+            color: selected
+                ? const Color(0xFFE8F5E9)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? const Color(0xFF145A32)
+                  : Colors.grey.shade300,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: selected
+                    ? const Color(0xFF145A32)
+                    : Colors.grey.shade700,
+              ),
+
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: selected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
+              ),
+
+              Icon(
+                selected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: selected
+                    ? const Color(0xFF145A32)
+                    : Colors.grey,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // BOTÓN DE EVIDENCIA
+  // ============================================================
+
+  Widget _evidenceButton({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required bool added,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: added
+              ? const Color(0xFFE8F5E9)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: added
+                ? const Color(0xFF2E7D32)
+                : Colors.grey.shade300,
+            width: added ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                added ? Icons.check : icon,
+                color: added
+                    ? const Color(0xFF2E7D32)
+                    : color,
+                size: 28,
+              ),
+            ),
+
+            const SizedBox(width: 15),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const Icon(
+              Icons.add_circle_outline,
+              color: Color(0xFF145A32),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // TARJETA DE RESUMEN
+  // ============================================================
+
+  Widget _summaryCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: Colors.grey.shade300,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: const Color(0xFF145A32),
+              ),
+
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const Divider(
+            height: 25,
+          ),
+
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // FILA DEL RESUMEN
+  // ============================================================
+
+  Widget _summaryRow(
+    String title,
+    String value,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 95,
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+              ),
+            ),
+          ),
+
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // BOTONES INFERIORES
+  // ============================================================
+
+  Widget _buildNavigationButtons() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        20,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // ------------------------------------------------------
+          // ATRÁS
+          // ------------------------------------------------------
+
+          if (_currentStep > 0)
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _pasoAnterior,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor:
+                      const Color(0xFF145A32),
+                  padding:
+                      const EdgeInsets.symmetric(
+                    vertical: 15,
+                  ),
+                  shape:
+                      RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  'Atrás',
+                ),
+              ),
+            ),
+
+          if (_currentStep > 0)
+            const SizedBox(width: 12),
+
+          // ------------------------------------------------------
+          // CONTINUAR
+          // ------------------------------------------------------
+
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _siguientePaso,
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    const Color(0xFF145A32),
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(
+                  vertical: 15,
+                ),
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(14),
+                ),
+              ),
+              child: Text(
+                _currentStep == 2
+                    ? 'Revisar reporte'
+                    : 'Continuar',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+------------------------------------------------------------------------------
+//new_screen
+import 'package:flutter/material.dart';
+
+class NewsScreen extends StatelessWidget {
+  const NewsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+
+      // ==========================================================
+      // BARRA SUPERIOR
+      // ==========================================================
+
+      appBar: AppBar(
+        title: const Text(
+          'Noticias',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFF145A32),
+        foregroundColor: Colors.white,
+      ),
+
+      // ==========================================================
+      // LISTA DE NOTICIAS
+      // ==========================================================
+
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+
+          // ======================================================
+          // NOTICIA 1
+          // ======================================================
+
+          _newsCard(
+            context: context,
+            icon: Icons.local_fire_department,
+            title: 'Prevención de incendios forestales',
+            date: 'Información general',
+            description:
+                'Conoce algunas recomendaciones para ayudar a '
+                'prevenir incendios forestales y proteger las áreas '
+                'naturales.',
+            color: const Color(0xFFD84315),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ======================================================
+          // NOTICIA 2
+          // ======================================================
+
+          _newsCard(
+            context: context,
+            icon: Icons.forest,
+            title: 'Información sobre tala ilegal',
+            date: 'Información ambiental',
+            description:
+                'Conoce la importancia de proteger los bosques y '
+                'reportar actividades que puedan afectar las áreas '
+                'forestales.',
+            color: const Color(0xFF2E7D32),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ======================================================
+          // NOTICIA 3
+          // ======================================================
+
+          _newsCard(
+            context: context,
+            icon: Icons.phone_android,
+            title: 'Nuevas funciones de GreenShield',
+            date: 'Actualización de la aplicación',
+            description:
+                'GreenShield continúa incorporando funciones para '
+                'facilitar el envío y seguimiento de reportes.',
+            color: const Color(0xFF1565C0),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ======================================================
+          // NOTICIA 4
+          // ======================================================
+
+          _newsCard(
+            context: context,
+            icon: Icons.public,
+            title: 'Cuidado del medio ambiente',
+            date: 'Información ambiental',
+            description:
+                'Mantente informado sobre temas relacionados con '
+                'el cuidado de los bosques y la protección del '
+                'medio ambiente.',
+            color: const Color(0xFF6A1B9A),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // TARJETA DE NOTICIA
+  // ============================================================
+
+  Widget _newsCard({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String date,
+    required String description,
+    required Color color,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
+
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            // --------------------------------------------------
+            // ICONO Y TÍTULO
+            // --------------------------------------------------
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 30,
+                  ),
+                ),
+
+                const SizedBox(width: 14),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 5),
+
+                      Text(
+                        date,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 14),
+
+            // --------------------------------------------------
+            // DESCRIPCIÓN
+            // --------------------------------------------------
+
+            Text(
+              description,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.4,
+                color: Colors.black87,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // --------------------------------------------------
+            // BOTÓN "LEER MÁS"
+            // --------------------------------------------------
+            //
+            // Por ahora solamente muestra un mensaje.
+            //
+            // Más adelante podemos hacer que abra una noticia
+            // completa obtenida desde el servidor.
+            // --------------------------------------------------
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Contenido completo próximamente.',
+                      ),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Leer más',
+                  style: TextStyle(
+                    color: Color(0xFF145A32),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
